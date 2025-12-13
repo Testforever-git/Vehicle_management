@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Auto Connect{% endblock %}</title>
+  <title>{% block title %}{{ lang_texts('base')['title'] }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/app.css">
   {% block extra_css %}{% endblock %}
 </head>
@@ -15,24 +15,16 @@
   </main>
 
   <footer class="container">
-    <p>© 2025 Auto Connect</p>
+    <p>© 2025 {{ lang_texts('base')['title'] }}</p>
   </footer>
 
   <!-- ===== 全局语言切换脚本 ===== -->
   <script>
   async function toggleLang(){
-    const next = "{{ 'jp' if current_lang=='cn' else 'cn' }}";
-    const res = await fetch('/api/lang/set', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({lang: next})
-    });
-    const data = await res.json();
-    if(data.ok){
-      window.location.href = window.location.href.split('?')[0];
-    } else {
-      alert('Language switch failed');
-    }
+    const next = "{{ 'ja' if current_lang=='zh' else 'zh' }}";
+    const url = new URL(window.location);
+    url.searchParams.set('lang', next);
+    window.location.href = url.toString();
   }
   </script>
 

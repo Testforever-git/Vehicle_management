@@ -1,8 +1,16 @@
 ```
 # Database
-*.db
+vehicle_system.db
 
-# Python
+# Backup files
+*.bak
+
+# Environment variables
+.env
+.env.local
+*.env.*
+
+# Dependencies
 __pycache__/
 *.pyc
 *.pyo
@@ -11,11 +19,41 @@ __pycache__/
 env/
 venv/
 .venv/
-.ENV
-.ENV.local
-
-# Logs
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
+*.tmp
+*.swp
+*.swo
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.vscode/
+.idea/
 
 # OS generated files
 .DS_Store
@@ -25,13 +63,4 @@ venv/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-
-# Environment variables
-.env
-.env.local
-*.env
 ```

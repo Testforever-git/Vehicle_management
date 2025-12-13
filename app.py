@@ -1,8 +1,89 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, g
 import sqlite3
 import os
+import yaml
+from flask_babel import Babel, get_locale
 
 app = Flask(__name__)
+app.config['LANGUAGES'] = {
+    'zh': '中文',
+    'ja': '日本語'  # 使用ja代表日语
+}
+app.config['BABEL_DEFAULT_LOCALE'] = 'zh'
+babel = Babel(app)
+
+# 加载语言文件的函数
+def load_language_file(page_name, lang_code):
+    """加载对应页面的YAML语言文件"""
+    try:
+        filepath = f'langs/{page_name}.yaml'
+        with open(filepath, 'r', encoding='utf-8') as file:
+            lang_data = yaml.safe_load(file)
+            return lang_data.get(lang_code, {})
+    except FileNotFoundError:
+        print(f"Language file not found: {filepath}")
+        return {}
+
+# 语言选择函数
+def select_locale():
+    # 优先从请求参数获取语言，否则使用默认语言
+    lang = request.args.get('lang')
+    if lang in app.config['LANGUAGES']:
+        return lang
+    return app.config['BABEL_DEFAULT_LOCALE']
+
+# 通过函数配置Babel的语言选择
+babel.init_app(app, locale_selector=select_locale)
+
+# 请求前处理，设置全局语言变量
+@app.before_request
+def before_request():
+    g.locale = select_locale()
+
+# 模板上下文处理器，为所有模板提供通用变量
+@app.context_processor
+def inject_common_vars():
+    current_lang_code = g.locale if hasattr(g, 'locale') else select_locale()
+    
+    # 加载基础语言文件
+    base_texts = load_language_file('base', current_lang_code)
+    
+    return dict(
+        common={'menu': base_texts},
+        current_lang=current_lang_code,
+        lang_texts=lambda page: load_language_file(page, current_lang_code),
+        translate_text=translate_text
+    )
+
+def translate_text(text, target_lang=None):
+    """
+    翻译文本函数 - 如果目标语言是日语且文本是中文，则调用翻译API
+    当前实现仅作为框架，实际翻译功能可根据需要扩展
+    """
+    if target_lang is None:
+        target_lang = g.locale if hasattr(g, 'locale') else select_locale()
+        
+    # 如果当前语言是日语，且输入文本是中文，则保留翻译逻辑
+    if target_lang == 'ja':
+        # 这里保留API调用的逻辑，目前返回原文
+        # 在实际部署时可以替换为真正的翻译服务
+        return text  # 暂时返回原文，实际使用时应调用翻译API
+    else:
+        return text
+
+# 语言切换API
+@app.route('/api/lang/set', methods=['POST'])
+def set_language():
+    import json
+    data = request.get_json()
+    lang = data.get('lang')
+    
+    if lang in app.config['LANGUAGES']:
+        # 由于Flask-Babel的语言选择是基于请求的，我们返回成功状态
+        # 实际的语言切换通过URL参数完成
+        return json.dumps({'ok': True, 'lang': lang})
+    else:
+        return json.dumps({'ok': False, 'error': 'Invalid language code'}), 400
 
 # 数据库连接函数
 def get_db_connection():

@@ -29,12 +29,20 @@
         </a>
 
         <!-- ====== 语言切换按钮 ====== -->
-        <button type="button"
-                class="lang-btn"
-                onclick="toggleLang()"
-                title="language">
-          {% if current_lang == 'jp' %}🇯🇵{% else %}🇨🇳{% endif %}
-        </button>
+        <div class="lang-selector">
+          <button type="button"
+                  class="lang-btn"
+                  onclick="toggleLang('zh')"
+                  title="中文">
+            🇨🇳
+          </button>
+          <button type="button"
+                  class="lang-btn"
+                  onclick="toggleLang('en')"
+                  title="English">
+            🇺🇸
+          </button>
+        </div>
       </div>
     </nav>
   </div>
@@ -77,6 +85,11 @@
   color: #007BFF;
 }
 
+.lang-selector {
+  display: flex;
+  gap: 5px;
+}
+
 .lang-btn {
   border: none;
   background: transparent;
@@ -84,9 +97,11 @@
   cursor: pointer;
   line-height: 1;
   transition: transform 0.2s ease;
+  padding: 2px;
 }
 
 .lang-btn:hover {
   transform: scale(1.1);
+  background-color: #f0f0f0;
 }
 </style>

@@ -33,7 +33,7 @@
                 class="lang-btn"
                 onclick="toggleLang()"
                 title="language">
-          {% if current_lang == 'jp' %}🇯🇵{% else %}🇨🇳{% endif %}
+          {% if current_lang == 'ja' %}{{ common['menu']['lang_jp'] }}{% else %}{{ common['menu']['lang_cn'] }}{% endif %}
         </button>
       </div>
     </nav>

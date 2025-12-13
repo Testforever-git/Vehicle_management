@@ -48,3 +48,8 @@ Define these classes and use consistently:
 - public page: minimal + safe fields only
 - detail page: shows advanced status fields
 - edit scope: redirects to login then to edit page (admin)
+
+## 7. Language and Text Policy (Updated)
+- 所有页面支持中日双语。统一使用navibar上的语言切换按钮进行切换
+- 所有静态文本用yaml文件保存，每一个页面对一个一个yaml，每个yaml中用 cn/jp层级 区分不同语言的文本
+- 保存在DB中的文本保存为中文，显示到页面时，如果切换了日文，则调用外部API进行翻译。 目前不实现，保留判断逻辑和API接口
