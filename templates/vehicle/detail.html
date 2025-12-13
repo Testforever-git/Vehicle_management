@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Vehicle Detail - {{ vehicle.vin }}{% endblock %}
+
+{% block content %}
+<div class="vehicle-detail">
+  <div class="detail-header">
+    <h1 class="ac-title-main">Vehicle Details</h1>
+    <div class="detail-actions">
+      <a href="/vehicle/{{ vehicle.id }}/edit" class="btn btn-primary">Edit</a>
+      <a href="/vehicle/{{ vehicle.id }}/files" class="btn btn-secondary">Files</a>
+      <a href="/vehicle/{{ vehicle.id }}/logs" class="btn btn-secondary">Logs</a>
+    </div>
+  </div>
+  
+  <div class="detail-grid">
+    <div class="info-section">
+      <h2 class="ac-title-sub">Basic Information</h2>
+      <div class="info-row">
+        <label class="ac-field-label">VIN:</label>
+        <span class="ac-field-readonly">{{ vehicle.vin }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Plate Number:</label>
+        <span class="ac-field-readonly">{{ vehicle.plate_no }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Brand (CN):</label>
+        <span class="ac-field-readonly">{{ vehicle.brand_cn }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Brand (JP):</label>
+        <span class="ac-field-readonly">{{ vehicle.brand_jp }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Model (CN):</label>
+        <span class="ac-field-readonly">{{ vehicle.model_cn }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Model (JP):</label>
+        <span class="ac-field-readonly">{{ vehicle.model_jp }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Color (CN):</label>
+        <span class="ac-field-readonly">{{ vehicle.color_cn }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Color (JP):</label>
+        <span class="ac-field-readonly">{{ vehicle.color_jp }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Model Year:</label>
+        <span class="ac-field-readonly">{{ vehicle.model_year }}</span>
+      </div>
+    </div>
+    
+    <div class="info-section">
+      <h2 class="ac-title-sub">Technical Specifications</h2>
+      <div class="info-row">
+        <label class="ac-field-label">Type Designation Code:</label>
+        <span class="ac-field-readonly">{{ vehicle.type_designation_code }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Classification Number:</label>
+        <span class="ac-field-readonly">{{ vehicle.classification_number }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Engine Code:</label>
+        <span class="ac-field-readonly">{{ vehicle.engine_code }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Engine Layout:</label>
+        <span class="ac-field-readonly">{{ vehicle.engine_layout }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Displacement (cc):</label>
+        <span class="ac-field-readonly">{{ vehicle.displacement_cc }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Fuel Type:</label>
+        <span class="ac-field-readonly">{{ vehicle.fuel_type }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Drive Type:</label>
+        <span class="ac-field-readonly">{{ vehicle.drive_type }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Transmission:</label>
+        <span class="ac-field-readonly">{{ vehicle.transmission }}</span>
+      </div>
+    </div>
+    
+    <div class="info-section">
+      <h2 class="ac-title-sub">Current Status</h2>
+      <div class="info-row">
+        <label class="ac-field-label">Status:</label>
+        <span class="ac-field-readonly ac-badge-status status-{{ vehicle_status.status }}">{{ vehicle_status.status|title }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Mileage:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.mileage }} km</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Fuel Level:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.fuel_level }}%</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Speed:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.speed }} km/h</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Engine On:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.engine_on }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Alcohol Check Passed:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.alcohol_check_passed }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Location:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.location_desc }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Last Update:</label>
+        <span class="ac-field-readonly">{{ vehicle_status.update_time }}</span>
+      </div>
+    </div>
+    
+    <div class="info-section">
+      <h2 class="ac-title-sub">Ownership & Location</h2>
+      <div class="info-row">
+        <label class="ac-field-label">Ownership Type:</label>
+        <span class="ac-field-readonly">{{ vehicle.ownership_type }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Owner ID:</label>
+        <span class="ac-field-readonly">{{ vehicle.owner_id }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Driver ID:</label>
+        <span class="ac-field-readonly">{{ vehicle.driver_id }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Garage Name:</label>
+        <span class="ac-field-readonly">{{ vehicle.garage_name }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Garage Address (JP):</label>
+        <span class="ac-field-readonly">{{ vehicle.garage_address_jp }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Garage Address (CN):</label>
+        <span class="ac-field-readonly">{{ vehicle.garage_address_cn }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Garage Postcode:</label>
+        <span class="ac-field-readonly">{{ vehicle.garage_postcode }}</span>
+      </div>
+    </div>
+    
+    <div class="info-section">
+      <h2 class="ac-title-sub">Additional Info</h2>
+      <div class="info-row">
+        <label class="ac-field-label">Purchase Date:</label>
+        <span class="ac-field-readonly">{{ vehicle.purchase_date }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Purchase Price:</label>
+        <span class="ac-field-readonly">{{ vehicle.purchase_price }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Note:</label>
+        <div class="ac-field-readonly">{{ vehicle.note }}</div>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Created At:</label>
+        <span class="ac-field-readonly">{{ vehicle.created_at }}</span>
+      </div>
+      <div class="info-row">
+        <label class="ac-field-label">Updated At:</label>
+        <span class="ac-field-readonly">{{ vehicle.updated_at }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 25px;
+}
+
+.info-section {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.info-section h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.info-row label {
+  min-width: 200px;
+  margin-right: 15px;
+  flex-shrink: 0;
+}
+
+.ac-field-readonly {
+  word-break: break-word;
+  flex-grow: 1;
+}
+</style>
+{% endblock %}
