@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="{{ current_lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Auto Connect{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {% include "_navbar.html" %}
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="container">
+    <p>© 2025 Auto Connect</p>
+  </footer>
+
+  <!-- ===== 全局语言切换脚本 ===== -->
+  <script>
+  async function toggleLang(){
+    const next = "{{ 'jp' if current_lang=='cn' else 'cn' }}";
+    const res = await fetch('/api/lang/set', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({lang: next})
+    });
+    const data = await res.json();
+    if(data.ok){
+      window.location.href = window.location.href.split('?')[0];
+    } else {
+      alert('Language switch failed');
+    }
+  }
+  </script>
+
+  <!-- ===== 页面独立脚本加载区 ===== -->
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
