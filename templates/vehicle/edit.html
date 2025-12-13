@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Vehicle - {{ vehicle.vin }}{% endblock %}
+
+{% block content %}
+<div class="vehicle-edit">
+  <h1 class="ac-title-main">Edit Vehicle</h1>
+  
+  <form class="edit-form" method="post" action="/vehicle/{{ vehicle.id }}/edit">
+    <div class="form-section">
+      <h2 class="ac-title-sub">Basic Information</h2>
+      <div class="form-row">
+        <label for="vin" class="ac-field-label">VIN *</label>
+        <input type="text" id="vin" name="vin" class="ac-input" value="{{ vehicle.vin }}" required>
+      </div>
+      <div class="form-row">
+        <label for="plate_no" class="ac-field-label">Plate Number *</label>
+        <input type="text" id="plate_no" name="plate_no" class="ac-input" value="{{ vehicle.plate_no }}" required>
+      </div>
+      <div class="form-row">
+        <label for="brand_cn" class="ac-field-label">Brand (CN)</label>
+        <input type="text" id="brand_cn" name="brand_cn" class="ac-input" value="{{ vehicle.brand_cn }}">
+      </div>
+      <div class="form-row">
+        <label for="brand_jp" class="ac-field-label">Brand (JP)</label>
+        <input type="text" id="brand_jp" name="brand_jp" class="ac-input" value="{{ vehicle.brand_jp }}">
+      </div>
+      <div class="form-row">
+        <label for="model_cn" class="ac-field-label">Model (CN)</label>
+        <input type="text" id="model_cn" name="model_cn" class="ac-input" value="{{ vehicle.model_cn }}">
+      </div>
+      <div class="form-row">
+        <label for="model_jp" class="ac-field-label">Model (JP)</label>
+        <input type="text" id="model_jp" name="model_jp" class="ac-input" value="{{ vehicle.model_jp }}">
+      </div>
+      <div class="form-row">
+        <label for="color_cn" class="ac-field-label">Color (CN)</label>
+        <input type="text" id="color_cn" name="color_cn" class="ac-input" value="{{ vehicle.color_cn }}">
+      </div>
+      <div class="form-row">
+        <label for="color_jp" class="ac-field-label">Color (JP)</label>
+        <input type="text" id="color_jp" name="color_jp" class="ac-input" value="{{ vehicle.color_jp }}">
+      </div>
+      <div class="form-row">
+        <label for="model_year" class="ac-field-label">Model Year</label>
+        <input type="number" id="model_year" name="model_year" class="ac-input" value="{{ vehicle.model_year }}">
+      </div>
+    </div>
+    
+    <div class="form-section">
+      <h2 class="ac-title-sub">Technical Specifications</h2>
+      <div class="form-row">
+        <label for="type_designation_code" class="ac-field-label">Type Designation Code</label>
+        <input type="text" id="type_designation_code" name="type_designation_code" class="ac-input" value="{{ vehicle.type_designation_code }}">
+      </div>
+      <div class="form-row">
+        <label for="classification_number" class="ac-field-label">Classification Number</label>
+        <input type="text" id="classification_number" name="classification_number" class="ac-input" value="{{ vehicle.classification_number }}">
+      </div>
+      <div class="form-row">
+        <label for="engine_code" class="ac-field-label">Engine Code</label>
+        <input type="text" id="engine_code" name="engine_code" class="ac-input" value="{{ vehicle.engine_code }}">
+      </div>
+      <div class="form-row">
+        <label for="engine_layout" class="ac-field-label">Engine Layout</label>
+        <select id="engine_layout" name="engine_layout" class="ac-input">
+          <option value="">Select Engine Layout</option>
+          <option value="V" {% if vehicle.engine_layout == 'V' %}selected{% endif %}>V</option>
+          <option value="Inline" {% if vehicle.engine_layout == 'Inline' %}selected{% endif %}>Inline</option>
+          <option value="Boxer" {% if vehicle.engine_layout == 'Boxer' %}selected{% endif %}>Boxer</option>
+          <option value="W" {% if vehicle.engine_layout == 'W' %}selected{% endif %}>W</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="displacement_cc" class="ac-field-label">Displacement (cc)</label>
+        <input type="number" id="displacement_cc" name="displacement_cc" class="ac-input" value="{{ vehicle.displacement_cc }}">
+      </div>
+      <div class="form-row">
+        <label for="fuel_type" class="ac-field-label">Fuel Type</label>
+        <select id="fuel_type" name="fuel_type" class="ac-input">
+          <option value="">Select Fuel Type</option>
+          <option value="Gasoline" {% if vehicle.fuel_type == 'Gasoline' %}selected{% endif %}>Gasoline</option>
+          <option value="Diesel" {% if vehicle.fuel_type == 'Diesel' %}selected{% endif %}>Diesel</option>
+          <option value="Hybrid" {% if vehicle.fuel_type == 'Hybrid' %}selected{% endif %}>Hybrid</option>
+          <option value="Electric" {% if vehicle.fuel_type == 'Electric' %}selected{% endif %}>Electric</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="drive_type" class="ac-field-label">Drive Type</label>
+        <select id="drive_type" name="drive_type" class="ac-input">
+          <option value="">Select Drive Type</option>
+          <option value="FWD" {% if vehicle.drive_type == 'FWD' %}selected{% endif %}>FWD</option>
+          <option value="RWD" {% if vehicle.drive_type == 'RWD' %}selected{% endif %}>RWD</option>
+          <option value="AWD" {% if vehicle.drive_type == 'AWD' %}selected{% endif %}>AWD</option>
+          <option value="4WD" {% if vehicle.drive_type == '4WD' %}selected{% endif %}>4WD</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="transmission" class="ac-field-label">Transmission</label>
+        <select id="transmission" name="transmission" class="ac-input">
+          <option value="">Select Transmission</option>
+          <option value="Manual" {% if vehicle.transmission == 'Manual' %}selected{% endif %}>Manual</option>
+          <option value="Automatic" {% if vehicle.transmission == 'Automatic' %}selected{% endif %}>Automatic</option>
+          <option value="CVT" {% if vehicle.transmission == 'CVT' %}selected{% endif %}>CVT</option>
+          <option value="DCT" {% if vehicle.transmission == 'DCT' %}selected{% endif %}>DCT</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-section">
+      <h2 class="ac-title-sub">Ownership & Location</h2>
+      <div class="form-row">
+        <label for="ownership_type" class="ac-field-label">Ownership Type</label>
+        <select id="ownership_type" name="ownership_type" class="ac-input">
+          <option value="">Select Ownership Type</option>
+          <option value="Company" {% if vehicle.ownership_type == 'Company' %}selected{% endif %}>Company</option>
+          <option value="Individual" {% if vehicle.ownership_type == 'Individual' %}selected{% endif %}>Individual</option>
+          <option value="Leased" {% if vehicle.ownership_type == 'Leased' %}selected{% endif %}>Leased</option>
+          <option value="Rental" {% if vehicle.ownership_type == 'Rental' %}selected{% endif %}>Rental</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="owner_id" class="ac-field-label">Owner ID</label>
+        <input type="number" id="owner_id" name="owner_id" class="ac-input" value="{{ vehicle.owner_id }}">
+      </div>
+      <div class="form-row">
+        <label for="driver_id" class="ac-field-label">Driver ID</label>
+        <input type="number" id="driver_id" name="driver_id" class="ac-input" value="{{ vehicle.driver_id }}">
+      </div>
+      <div class="form-row">
+        <label for="garage_name" class="ac-field-label">Garage Name</label>
+        <input type="text" id="garage_name" name="garage_name" class="ac-input" value="{{ vehicle.garage_name }}">
+      </div>
+      <div class="form-row">
+        <label for="garage_address_jp" class="ac-field-label">Garage Address (JP)</label>
+        <input type="text" id="garage_address_jp" name="garage_address_jp" class="ac-input" value="{{ vehicle.garage_address_jp }}">
+      </div>
+      <div class="form-row">
+        <label for="garage_address_cn" class="ac-field-label">Garage Address (CN)</label>
+        <input type="text" id="garage_address_cn" name="garage_address_cn" class="ac-input" value="{{ vehicle.garage_address_cn }}">
+      </div>
+      <div class="form-row">
+        <label for="garage_postcode" class="ac-field-label">Garage Postcode</label>
+        <input type="text" id="garage_postcode" name="garage_postcode" class="ac-input" value="{{ vehicle.garage_postcode }}">
+      </div>
+    </div>
+    
+    <div class="form-section">
+      <h2 class="ac-title-sub">Additional Info</h2>
+      <div class="form-row">
+        <label for="purchase_date" class="ac-field-label">Purchase Date</label>
+        <input type="date" id="purchase_date" name="purchase_date" class="ac-input" value="{{ vehicle.purchase_date }}">
+      </div>
+      <div class="form-row">
+        <label for="purchase_price" class="ac-field-label">Purchase Price</label>
+        <input type="number" id="purchase_price" name="purchase_price" class="ac-input" step="0.01" value="{{ vehicle.purchase_price }}">
+      </div>
+      <div class="form-row">
+        <label for="note" class="ac-field-label">Note</label>
+        <textarea id="note" name="note" class="ac-input" rows="4">{{ vehicle.note }}</textarea>
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="/vehicle/{{ vehicle.id }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-section {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.form-section h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.form-row {
+  display: flex;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.form-row label {
+  min-width: 200px;
+  margin-right: 15px;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ac-input {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.ac-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+textarea.ac-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+</style>
+{% endblock %}

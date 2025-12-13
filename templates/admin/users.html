@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - Vehicle System{% endblock %}
+
+{% block content %}
+<div class="admin-users">
+  <div class="users-header">
+    <h1 class="ac-title-main">User Management</h1>
+    <div class="users-actions">
+      <button class="btn btn-primary">Add New User</button>
+    </div>
+  </div>
+  
+  <div class="search-filters">
+    <input type="text" placeholder="Search users..." class="ac-input search-box">
+    <select class="ac-input filter-select">
+      <option>All Roles</option>
+      <option>Viewer</option>
+      <option>Sales</option>
+      <option>Engineer</option>
+      <option>Finance</option>
+      <option>Admin</option>
+      <option>Customer</option>
+    </select>
+    <select class="ac-input filter-select">
+      <option>All Status</option>
+      <option>Active</option>
+      <option>Inactive</option>
+    </select>
+  </div>
+  
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Created At</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="5">No users found</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="pagination">
+    <span class="page-info">Page 1 of 1</span>
+    <div class="page-nav">
+      <button class="btn btn-secondary" disabled>Previous</button>
+      <button class="btn btn-primary" disabled>Next</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.users-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.users-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.search-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.search-box, .filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 200px;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.users-table th,
+.users-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.users-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.ac-badge-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.status-active { background-color: #d4edda; color: #155724; }
+.status-inactive { background-color: #f8d7da; color: #721c24; }
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-nav {
+  display: flex;
+  gap: 10px;
+}
+</style>
+{% endblock %}

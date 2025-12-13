@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Field Permissions - Vehicle System{% endblock %}
+
+{% block content %}
+<div class="admin-field-permissions">
+  <div class="permissions-header">
+    <h1 class="ac-title-main">Field Permissions</h1>
+    <div class="permissions-actions">
+      <button class="btn btn-primary">Add New Permission</button>
+    </div>
+  </div>
+  
+  <div class="search-filters">
+    <select class="ac-input filter-select">
+      <option>All Tables</option>
+      <option>vehicle</option>
+      <option>vehicle_status</option>
+      <option>vehicle_media</option>
+      <option>vehicle_log</option>
+      <option>vehicle_qr</option>
+    </select>
+    <select class="ac-input filter-select">
+      <option>All Access Levels</option>
+      <option>Basic</option>
+      <option>Advanced</option>
+      <option>Admin</option>
+    </select>
+    <select class="ac-input filter-select">
+      <option>All Roles</option>
+      <option>Viewer</option>
+      <option>Sales</option>
+      <option>Engineer</option>
+      <option>Finance</option>
+      <option>Admin</option>
+    </select>
+  </div>
+  
+  <table class="permissions-table">
+    <thead>
+      <tr>
+        <th>Table</th>
+        <th>Field</th>
+        <th>Access Level</th>
+        <th>Min Role</th>
+        <th>Visible</th>
+        <th>Editable</th>
+        <th>Description</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td colspan="8">No field permissions found</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="pagination">
+    <span class="page-info">Page 1 of 1</span>
+    <div class="page-nav">
+      <button class="btn btn-secondary" disabled>Previous</button>
+      <button class="btn btn-primary" disabled>Next</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.permissions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.permissions-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.search-filters {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 180px;
+}
+
+.permissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.permissions-table th,
+.permissions-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.permissions-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.ac-badge-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.status-visible { background-color: #d4edda; color: #155724; }
+.status-hidden { background-color: #f8d7da; color: #721c24; }
+.status-editable { background-color: #cce5ff; color: #004085; }
+.status-readonly { background-color: #fff3cd; color: #856404; }
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-nav {
+  display: flex;
+  gap: 10px;
+}
+</style>
+{% endblock %}
