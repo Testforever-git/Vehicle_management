@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ current_lang }}">
+<html lang="{{ g.locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,19 +20,8 @@
 
   <!-- ===== 全局语言切换脚本 ===== -->
   <script>
-  async function toggleLang(){
-    const next = "{{ 'jp' if current_lang=='cn' else 'cn' }}";
-    const res = await fetch('/api/lang/set', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({lang: next})
-    });
-    const data = await res.json();
-    if(data.ok){
-      window.location.href = window.location.href.split('?')[0];
-    } else {
-      alert('Language switch failed');
-    }
+  function toggleLang(langCode){
+    window.location.href = `?lang=${langCode}`;
   }
   </script>
 

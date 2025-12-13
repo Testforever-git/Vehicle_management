@@ -1,0 +1,18 @@
+cn:
+  title: "车辆日志"
+  log_list: "日志列表"
+  date: "日期"
+  user: "用户"
+  action: "操作"
+  description: "描述"
+  level: "级别"
+  back_to_detail: "返回详情页"
+jp:
+  title: "車両ログ"
+  log_list: "ログリスト"
+  date: "日付"
+  user: "ユーザー"
+  action: "操作"
+  description: "説明"
+  level: "レベル"
+  back_to_detail: "詳細に戻る"

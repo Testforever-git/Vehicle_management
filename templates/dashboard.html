@@ -1,39 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Vehicle System{% endblock %}
+{% block title %}{{ lang_texts('dashboard')['title'] }} - {{ lang_texts('base')['title'] }}{% endblock %}
 
 {% block content %}
 <div class="dashboard">
-  <h1 class="ac-title-main">Dashboard</h1>
+  <h1 class="ac-title-main">{{ lang_texts('dashboard')['title'] }}</h1>
   
   <div class="dashboard-stats">
     <div class="stat-card">
-      <h3>Total Vehicles</h3>
+      <h3>{{ lang_texts('dashboard')['total_vehicles'] }}</h3>
       <p class="stat-value">0</p>
     </div>
     <div class="stat-card">
-      <h3>Available</h3>
+      <h3>{{ lang_texts('dashboard')['available_vehicles'] }}</h3>
       <p class="stat-value">0</p>
     </div>
     <div class="stat-card">
-      <h3>Rented</h3>
+      <h3>{{ lang_texts('dashboard')['rented_vehicles'] }}</h3>
       <p class="stat-value">0</p>
     </div>
     <div class="stat-card">
-      <h3>Maintenance</h3>
+      <h3>{{ lang_texts('dashboard')['maintenance_vehicles'] }}</h3>
       <p class="stat-value">0</p>
     </div>
   </div>
   
   <div class="dashboard-actions">
-    <a href="/vehicle/list" class="btn btn-primary">View All Vehicles</a>
-    <a href="/vehicle/new" class="btn btn-secondary">Add New Vehicle</a>
+    <a href="/vehicle/list" class="btn btn-primary">{{ lang_texts('dashboard')['view_all'] }}</a>
+    <a href="/vehicle/new" class="btn btn-secondary">{{ lang_texts('base')['add_new_vehicle']|default('Add New Vehicle') }}</a>
   </div>
   
   <div class="recent-activity">
-    <h2 class="ac-title-sub">Recent Activity</h2>
+    <h2 class="ac-title-sub">{{ lang_texts('dashboard')['recent_activity'] }}</h2>
     <ul class="activity-list">
-      <li>No recent activity</li>
+      <li>{{ lang_texts('dashboard')['no_recent_activity']|default('No recent activity') }}</li>
     </ul>
   </div>
 </div>
