@@ -1,0 +1,78 @@
+body {
+  font-family: 'Noto Sans JP', system-ui, sans-serif;
+  margin: 0;
+  background: #fafafa;
+  color: #222;
+}
+
+/* 统一容器布局 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;  /* 左右缩进保持一致 */
+}
+
+header {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+
+/* 导航栏布局 */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-left a {
+  text-decoration: none;
+  color: #222;
+  font-weight: 500;
+}
+
+.nav-left .logo img {
+  height: 45px;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-right a {
+  text-decoration: none;
+  color: #222;
+  font-weight: 500;
+}
+
+nav .lang button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+}
+nav .lang button:hover {
+  transform: scale(1.15);
+  transition: transform 0.2s;
+}
+
+footer {
+  text-align: center;
+  padding: 24px 0;
+  font-size: 0.9rem;
+  color: #999;
+  margin-top: 40px;
+  border-top: 1px solid #eee;
+}
