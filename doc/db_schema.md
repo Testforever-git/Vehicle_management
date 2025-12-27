@@ -111,6 +111,7 @@ Fields:
 ## 9. Change Rules
 - 不得把动态字段写入 vehicle（里程/油量/位置等）
 - 任何新字段新增：优先 ext_json；高频稳定后再“升格”为列
+<<<<<<< HEAD
 - 所有跨模块状态更新必须写 vehicle_log
 
 
@@ -121,3 +122,7 @@ Fields:
   name
   user
   password
+  charset
+=======
+- 所有跨模块状态更新必须写 vehicle_log
+>>>>>>> e18cd7c57d7aa5bd910b55c6e63eea0d46441285
