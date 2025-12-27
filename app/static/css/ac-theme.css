@@ -1,0 +1,13 @@
+.ac-title-main { font-size: 1.5rem; font-weight: 600; }
+.ac-title-sub  { font-size: 1.1rem; font-weight: 600; margin-bottom: .5rem; }
+
+.ac-field-label { font-size: .875rem; font-weight: 500; color: #555; }
+.ac-text-body { font-size: .95rem; color: #222; }
+.ac-text-meta { font-size: .8rem; color: #888; }
+
+.ac-input { border-radius: .4rem; }
+.ac-btn { border-radius: 999px; }
+
+.ac-field { margin-top: .35rem; }
+.ac-field-main .ac-field-value { font-size: 1.0rem; font-weight: 600; }
+.ac-field-readonly .readonly { padding:.35rem .5rem; background:#f8f9fa; border-radius:.35rem; }

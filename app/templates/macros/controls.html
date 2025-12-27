@@ -1,0 +1,29 @@
+{% from 'macros/permissions.html' import can_view_field, can_edit_field %}
+
+{% macro display_field(table, field, label, value, style='body') -%}
+  {% if can_view_field(table, field) %}
+    <div class="ac-field ac-field-{{ style }}">
+      <div class="ac-field-label">{{ label }}</div>
+      <div class="ac-field-value ac-text-body">
+        {{ value if value is not none and value != '' else '-' }}
+      </div>
+    </div>
+  {% endif %}
+{%- endmacro %}
+
+{% macro input_field(table, field, label, name, value, type='text') -%}
+  {% set v = can_view_field(table, field) %}
+  {% set e = can_edit_field(table, field) %}
+  {% if not v %}
+  {% elif v and not e %}
+    <div class="mb-3 ac-field ac-field-readonly">
+      <label class="form-label ac-field-label">{{ label }}</label>
+      <div class="ac-field-value readonly">{{ value if value else '-' }}</div>
+    </div>
+  {% else %}
+    <div class="mb-3 ac-field ac-field-editable">
+      <label class="form-label ac-field-label">{{ label }}</label>
+      <input class="form-control ac-input" type="{{ type }}" name="{{ name }}" value="{{ value or '' }}">
+    </div>
+  {% endif %}
+{%- endmacro %}

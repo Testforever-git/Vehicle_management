@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% from 'macros/controls.html' import display_field %}
+{% from 'macros/buttons.html' import action_button %}
+
+{% block page_title %}{{ vehicle.brand_jp }} / {{ vehicle.model_jp }}{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-5">
+    <div class="card p-3">
+      <div class="ac-title-sub">{{ t('vehicle.section_basic') }}</div>
+      {{ display_field('vehicle','brand_jp', t('vehicle.brand'), vehicle.brand_jp, 'main') }}
+      {{ display_field('vehicle','model_jp', t('vehicle.model'), vehicle.model_jp) }}
+      {{ display_field('vehicle','type_designation_code', t('vehicle.type_designation_code'), vehicle.type_designation_code) }}
+      {{ display_field('vehicle','plate_no', t('vehicle.plate_no'), vehicle.masked_plate_no) }}
+      {{ display_field('vehicle','vin', t('vehicle.vin'), vehicle.vin) }}
+    </div>
+
+    <div class="mt-2 d-flex gap-2">
+      {{ action_button('vehicle','edit', t('common.edit'), url_for('ui.vehicle_edit', vehicle_id=vehicle.id, lang=lang)) }}
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('qr.qr_public', qr_slug='abc123', lang=lang) }}">
+        QR(public demo)
+      </a>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card p-3">
+      <div class="ac-title-sub">{{ t('vehicle.section_status') }}</div>
+      {% if status %}
+        {{ display_field('vehicle_status','status', t('vehicle.status'), status.status) }}
+        {{ display_field('vehicle_status','mileage', t('vehicle.mileage'), status.mileage ~ ' km') }}
+        {{ display_field('vehicle_status','fuel_level', t('vehicle.fuel_level'), status.fuel_level ~ ' %') }}
+        {{ display_field('vehicle_status','location_desc', t('vehicle.location_desc'), status.location_desc) }}
+      {% else %}
+        <p class="ac-text-meta">{{ t('vehicle.no_status') }}</p>
+      {% endif %}
+    </div>
+
+    <div class="card p-3 mt-3">
+      <div class="ac-title-sub">{{ t('vehicle.section_garage') }}</div>
+      {{ display_field('vehicle','garage_name', t('vehicle.garage_name'), vehicle.garage_name) }}
+      {{ display_field('vehicle','garage_address_jp', t('vehicle.garage_address_jp'), vehicle.garage_address_jp) }}
+    </div>
+
+    <div class="card p-3 mt-3">
+      <div class="ac-title-sub">{{ t('vehicle.section_files') }}</div>
+      {{ display_field('vehicle','legal_doc_dir', t('vehicle.legal_doc_dir'), vehicle.legal_doc_dir) }}
+      {{ display_field('vehicle','vehicle_photo_dir', t('vehicle.vehicle_photo_dir'), vehicle.vehicle_photo_dir) }}
+      <p class="ac-text-meta mb-0">
+        {{ t('vehicle.files_hint') }}
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

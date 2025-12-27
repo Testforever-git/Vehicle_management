@@ -1,0 +1,11 @@
+{% macro can(module_name, action_type) -%}
+  {{ perms.can(module_name, action_type) }}
+{%- endmacro %}
+
+{% macro can_view_field(table_name, field_name) -%}
+  {{ field_perm.can_view(table_name, field_name) }}
+{%- endmacro %}
+
+{% macro can_edit_field(table_name, field_name) -%}
+  {{ field_perm.can_edit(table_name, field_name) }}
+{%- endmacro %}

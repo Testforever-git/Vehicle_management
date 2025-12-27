@@ -1,0 +1,7 @@
+{% from 'macros/permissions.html' import can %}
+
+{% macro action_button(module, action, label, url, style='primary', size='sm') -%}
+  {% if can(module, action) %}
+    <a href="{{ url }}" class="btn btn-{{ style }} btn-{{ size }} ac-btn">{{ label }}</a>
+  {% endif %}
+{%- endmacro %}

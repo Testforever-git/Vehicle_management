@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% from 'macros/buttons.html' import action_button %}
+
+{% block page_title %}{{ t('vehicle.list_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3 mb-3">
+  <div class="row g-2">
+    <div class="col-md-3">
+      <label class="form-label ac-field-label">{{ t('vehicle.brand') }}</label>
+      <input class="form-control ac-input" placeholder="Tesla">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label ac-field-label">{{ t('vehicle.status') }}</label>
+      <select class="form-select ac-input">
+        <option>{{ t('common.all') }}</option>
+        {% for v, label in status_options %}
+          <option value="{{ v }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6 d-flex align-items-end justify-content-end gap-2">
+      <button class="btn btn-primary">{{ t('common.search') }}</button>
+      <button class="btn btn-outline-secondary">{{ t('common.reset') }}</button>
+      {{ action_button('vehicle','export', t('common.export_csv'), '#', 'outline-secondary') }}
+    </div>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-sm align-middle">
+    <thead>
+      <tr>
+        <th>{{ t('vehicle.brand_model') }}</th>
+        <th>{{ t('vehicle.plate_no') }}</th>
+        <th>{{ t('vehicle.status') }}</th>
+        <th>{{ t('common.actions') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vehicles %}
+      <tr>
+        <td class="ac-text-body">{{ v.brand_jp }} / {{ v.model_jp }}</td>
+        <td class="ac-text-body">{{ v.masked_plate_no }}</td>
+        <td class="ac-text-body">{{ v.status }}</td>
+        <td>
+          <a class="btn btn-link btn-sm" href="{{ url_for('ui.vehicle_detail', vehicle_id=v.id, lang=lang) }}">
+            {{ t('common.view') }}
+          </a>
+          {{ action_button('vehicle','edit', t('common.edit'), url_for('ui.vehicle_edit', vehicle_id=v.id, lang=lang), 'link') }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="ac-text-meta">{{ t('common.total') }}: {{ pagination.total }}</p>
+{% endblock %}

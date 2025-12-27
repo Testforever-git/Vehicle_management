@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ t('menu.dashboard') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3">
+  <div class="ac-title-sub">{{ t('dashboard.total_vehicles') }}</div>
+  <div class="display-6">{{ total }}</div>
+</div>
+
+<div class="mt-3">
+  <a class="btn btn-outline-secondary" href="{{ url_for('ui.vehicle_list', lang=lang) }}">
+    {{ t('menu.vehicles') }}
+  </a>
+</div>
+{% endblock %}
