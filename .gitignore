@@ -23,14 +23,62 @@ requirements.txt.bak
 *~
 .DS_Store
 Thumbs.db
+# Database
+vehicle_system.db
+db/image
 
-# Environment
+# Backup files
+*.bak
+
+# Environment variables
 .env
+env.ini
 .env.local
 .env.*
 !.env.example
 
-# Editors
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
 .vscode/
 .idea/
 *.sublime-project
@@ -71,4 +119,12 @@ htmlcov/
 
 # Security
 app/security/mock_users.py
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 ```

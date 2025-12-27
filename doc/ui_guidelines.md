@@ -51,6 +51,7 @@ Define these classes and use consistently:
 
 ## 7.language&Text
 - 所有页面支持中日双语。统一使用navibar上的语言切换按钮进行切换
+<<<<<<< HEAD
 - 所有静态文本用yaml文件保存. 位置为 app/static/i18n/
     每一个页面对一个一个yaml，每个yaml中用 cn/jp层级，区分不同语言的文本。
 	如 app/static/i18n/vehicle_edit.yaml
@@ -66,3 +67,10 @@ Define these classes and use consistently:
 - 所有UI页面同时支持桌面端和移动端。
 
 
+=======
+- 所有静态文本用yaml文件保存，每一个页面对一个一个yaml，每个yaml中用 cn/jp层级 区分不同语言的文本
+- 保存在DB中的文本保存为中文，显示到页面时，如果切换了日文，则调用外部API进行翻译。 目前不实现，保留判断逻辑和API接口
+
+## 8 客户端支持
+- 所有UI页面同时支持桌面端和移动端。
+>>>>>>> e18cd7c57d7aa5bd910b55c6e63eea0d46441285
