@@ -1,0 +1,14 @@
+jp:
+  page_title: "QR"
+  section_title: "公開車両情報"
+  status: "ステータス"
+  plate_no: "車牌番号"
+  scanned_at: "読み取り時刻"
+  unknown: "不明"
+cn:
+  page_title: "二维码"
+  section_title: "公开车辆信息"
+  status: "状态"
+  plate_no: "车牌号"
+  scanned_at: "扫描时间"
+  unknown: "未知"

@@ -1,4 +1,4 @@
-{% from 'macros/permissions.html' import can %}
+{% from 'macros/permissions.html' import can with context %}
 
 {% macro action_button(module, action, label, url, style='primary', size='sm') -%}
   {% if can(module, action) %}

@@ -1,10 +1,10 @@
-{% from 'macros/permissions.html' import can %}
+{% from 'macros/permissions.html' import can with context %}
 
 {% set _va = request.view_args or {} %}
 
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
   <div class="container-fluid">
-    <a class="navbar-brand" href="{{ url_for('ui.dashboard', lang=lang) }}">Auto Connect</a>
+    <a class="navbar-brand" href="{{ url_for('ui.dashboard', lang=lang) }}">{{ t('nav.brand') }}</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
             data-bs-target="#topNav" aria-controls="topNav" aria-expanded="false">
       <span class="navbar-toggler-icon"></span>
@@ -17,7 +17,7 @@
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'dashboard' %}active{% endif %}"
              href="{{ url_for('ui.dashboard', lang=lang) }}">
-            {{ t('menu.dashboard') }}
+            {{ t('nav.dashboard') }}
           </a>
         </li>
         {% endif %}
@@ -26,7 +26,7 @@
         <li class="nav-item">
           <a class="nav-link {% if active_menu == 'vehicle' %}active{% endif %}"
              href="{{ url_for('ui.vehicle_list', lang=lang) }}">
-            {{ t('menu.vehicles') }}
+            {{ t('nav.vehicles') }}
           </a>
         </li>
         {% endif %}
@@ -35,17 +35,17 @@
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','field_permissions'] %}active{% endif %}"
              href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {{ t('menu.admin') }}
+            {{ t('nav.admin') }}
           </a>
           <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.user_list', lang=lang) }}">
-                {{ t('menu.admin_users') }}
+                {{ t('nav.admin_users') }}
               </a>
             </li>
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.field_permissions', lang=lang) }}">
-                {{ t('menu.field_permissions') }}
+                {{ t('nav.field_permissions') }}
               </a>
             </li>
           </ul>
@@ -58,11 +58,11 @@
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="langDropdown"
              role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {{ t('lang.jp') if lang == 'jp' else t('lang.cn') }}
+            {{ t('nav.lang_jp') if lang == 'jp' else t('nav.lang_cn') }}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="{{ lang_url_jp }}">{{ t('lang.jp') }}</a></li>
-            <li><a class="dropdown-item" href="{{ lang_url_cn }}">{{ t('lang.cn') }}</a></li>
+            <li><a class="dropdown-item" href="{{ lang_url_jp }}">{{ t('nav.lang_jp') }}</a></li>
+            <li><a class="dropdown-item" href="{{ lang_url_cn }}">{{ t('nav.lang_cn') }}</a></li>
           </ul>
         </li>
 
@@ -74,12 +74,12 @@
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li class="dropdown-item text-muted">
-              {{ t('label.role') }}: {{ current_user.role_code }}
+              {{ t('nav.role_label') }}: {{ current_user.role_code }}
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
               <a class="dropdown-item" href="{{ url_for('auth.logout_route', lang=lang) }}">
-                {{ t('menu.logout') }}
+                {{ t('nav.logout') }}
               </a>
             </li>
           </ul>
@@ -87,7 +87,7 @@
         {% else %}
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('auth.login', lang=lang) }}">
-            {{ t('menu.login') }}
+            {{ t('nav.login') }}
           </a>
         </li>
         {% endif %}
