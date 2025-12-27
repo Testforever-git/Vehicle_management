@@ -1,4 +1,28 @@
 ```
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# Dependencies
+.venv/
+venv/
+env/
+.ENV/
+node_modules/
+pip-log.txt
+pipenv.lock
+requirements.txt.bak
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
 # Database
 vehicle_system.db
 db/image
@@ -10,7 +34,8 @@ db/image
 .env
 env.ini
 .env.local
-*.env.*
+.env.*
+!.env.example
 
 # Dependencies
 __pycache__/
@@ -56,7 +81,44 @@ wheels/
 # IDEs
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
+nbproject/
+*.swp
+*.swo
+*~
 
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Distribution / packaging
+.Python
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+*.zip
+*.tar.gz
+*.whl
+
+# Testing
+.pytest_cache/
+.nosetests
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.cover/
+
+# Security
+app/security/mock_users.py
 # OS generated files
 .DS_Store
 .DS_Store?
