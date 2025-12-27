@@ -1,4 +1,4 @@
-{% from 'macros/permissions.html' import can_view_field, can_edit_field %}
+{% from 'macros/permissions.html' import can_view_field, can_edit_field with context %}
 
 {% macro display_field(table, field, label, value, style='body') -%}
   {% if can_view_field(table, field) %}

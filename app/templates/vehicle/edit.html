@@ -1,39 +1,39 @@
 {% extends 'base.html' %}
 {% from 'macros/controls.html' import input_field %}
 
-{% block page_title %}{{ t('vehicle.edit_title') }}{% endblock %}
+{% block page_title %}{{ t('vehicle_edit.page_title') }}{% endblock %}
 
 {% block content %}
 <form method="post" class="card p-3">
   <div class="row g-3">
     <div class="col-md-4">
-      {{ input_field('vehicle','brand_jp', t('vehicle.brand_jp'), 'brand_jp', vehicle.brand_jp) }}
+      {{ input_field('vehicle','brand_jp', t('vehicle_edit.brand_jp'), 'brand_jp', vehicle.brand_jp) }}
     </div>
     <div class="col-md-4">
-      {{ input_field('vehicle','model_jp', t('vehicle.model_jp'), 'model_jp', vehicle.model_jp) }}
+      {{ input_field('vehicle','model_jp', t('vehicle_edit.model_jp'), 'model_jp', vehicle.model_jp) }}
     </div>
     <div class="col-md-4">
-      {{ input_field('vehicle','type_designation_code', t('vehicle.type_designation_code'), 'type_designation_code', vehicle.type_designation_code) }}
+      {{ input_field('vehicle','type_designation_code', t('vehicle_edit.type_designation_code'), 'type_designation_code', vehicle.type_designation_code) }}
     </div>
 
     <div class="col-md-6">
-      {{ input_field('vehicle','garage_name', t('vehicle.garage_name'), 'garage_name', vehicle.garage_name) }}
+      {{ input_field('vehicle','garage_name', t('vehicle_edit.garage_name'), 'garage_name', vehicle.garage_name) }}
     </div>
     <div class="col-md-6">
-      {{ input_field('vehicle','garage_address_jp', t('vehicle.garage_address_jp'), 'garage_address_jp', vehicle.garage_address_jp) }}
+      {{ input_field('vehicle','garage_address_jp', t('vehicle_edit.garage_address_jp'), 'garage_address_jp', vehicle.garage_address_jp) }}
     </div>
 
     <div class="col-md-6">
-      {{ input_field('vehicle','purchase_price', t('vehicle.purchase_price'), 'purchase_price', vehicle.purchase_price, 'number') }}
-      <p class="ac-text-meta">admin only editable demo field</p>
+      {{ input_field('vehicle','purchase_price', t('vehicle_edit.purchase_price'), 'purchase_price', vehicle.purchase_price, 'number') }}
+      <p class="ac-text-meta">{{ t('vehicle_edit.admin_only_note') }}</p>
     </div>
   </div>
 
   <div class="d-flex justify-content-end gap-2 mt-2">
     <a class="btn btn-outline-secondary" href="{{ url_for('ui.vehicle_detail', vehicle_id=vehicle.id, lang=lang) }}">
-      {{ t('common.cancel') }}
+      {{ t('vehicle_edit.cancel') }}
     </a>
-    <button class="btn btn-primary">{{ t('common.save') }}</button>
+    <button class="btn btn-primary">{{ t('vehicle_edit.save') }}</button>
   </div>
 </form>
 {% endblock %}
