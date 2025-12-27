@@ -121,4 +121,3 @@ Fields:
   name
   user
   password
-  charset
