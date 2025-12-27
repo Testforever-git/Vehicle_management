@@ -1,12 +1,14 @@
 ```
 # Database
 vehicle_system.db
+db/image
 
 # Backup files
 *.bak
 
 # Environment variables
 .env
+env.ini
 .env.local
 *.env.*
 
