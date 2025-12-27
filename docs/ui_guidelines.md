@@ -49,7 +49,6 @@ Define these classes and use consistently:
 - detail page: shows advanced status fields
 - edit scope: redirects to login then to edit page (admin)
 
-
 ## 7.language&Text
 - 所有页面支持中日双语。统一使用navibar上的语言切换按钮进行切换
 - 所有静态文本用yaml文件保存，每一个页面对一个一个yaml，每个yaml中用 cn/jp层级 区分不同语言的文本
