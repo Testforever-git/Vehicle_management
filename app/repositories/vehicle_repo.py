@@ -33,12 +33,9 @@ VEHICLE_COLUMNS = [
     "garage_lng",
     "purchase_date",
     "purchase_price",
-    "legal_doc",
-    "vehicle_photo",
-    "legal_doc_dir",
-    "vehicle_photo_dir",
     "ext_json",
     "note",
+    "updated_by",
 ]
 
 
@@ -46,25 +43,11 @@ def _select_columns():
     return ", ".join([c for c in VEHICLE_COLUMNS if c != "id"]) + ", id"
 
 
-def _parse_json_list(value):
-    if not value:
-        return []
-    if isinstance(value, list):
-        return value
-    try:
-        data = json.loads(value)
-        if isinstance(data, list):
-            return data
-    except Exception:
-        pass
-    return [v for v in str(value).split(",") if v]
-
 def list_vehicles():
     sql = """
     SELECT
       id, brand_jp, model_jp, plate_no, vin, type_designation_code,
-      garage_name, garage_address_jp, purchase_price,
-      legal_doc_dir, vehicle_photo_dir
+      garage_name, garage_address_jp, purchase_price
     FROM vehicle
     ORDER BY id DESC
     LIMIT 200
@@ -81,8 +64,6 @@ def get_vehicle(vehicle_id: int):
     r = fetch_one(sql, (vehicle_id,))
     if not r:
         return None
-    r["legal_doc_list"] = _parse_json_list(r.get("legal_doc"))
-    r["vehicle_photo_list"] = _parse_json_list(r.get("vehicle_photo"))
     return r
 
 
@@ -95,8 +76,6 @@ def get_vehicle_by_vin(vin: str):
     r = fetch_one(sql, (vin,))
     if not r:
         return None
-    r["legal_doc_list"] = _parse_json_list(r.get("legal_doc"))
-    r["vehicle_photo_list"] = _parse_json_list(r.get("vehicle_photo"))
     return r
 
 def get_status(vehicle_id: int):
@@ -118,6 +97,7 @@ def update_vehicle(vehicle_id: int, payload: dict):
             params.append(payload[f])
     if not sets:
         return 0
+    sets.append("updated_at = NOW()")
     params.append(vehicle_id)
     sql = f"UPDATE vehicle SET {', '.join(sets)} WHERE id = %s"
     return execute(sql, tuple(params))

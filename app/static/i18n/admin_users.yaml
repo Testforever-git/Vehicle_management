@@ -12,6 +12,7 @@ jp:
   active_no: "無効"
   create: "作成"
   update: "更新"
+  delete: "削除"
   password_reset: "パスワード再設定"
   empty: "ユーザーがありません"
 cn:
@@ -28,5 +29,6 @@ cn:
   active_no: "停用"
   create: "创建"
   update: "更新"
+  delete: "删除"
   password_reset: "重置密码"
   empty: "暂无用户"

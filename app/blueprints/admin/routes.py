@@ -2,7 +2,8 @@ from flask import render_template, redirect, url_for, request, flash
 from . import bp
 from ...repositories.field_permission_repo import list_field_permissions, update_field_permission
 from ...repositories.role_repo import list_roles
-from ...repositories.user_repo import create_user, list_users, update_password, update_user
+from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
+from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...security.users import get_current_user
 from werkzeug.security import generate_password_hash
 
@@ -36,6 +37,13 @@ def user_actions():
             flash("missing required fields", "warning")
         else:
             create_user(username, generate_password_hash(password), role_id, full_name, is_active)
+            log_vehicle_action(
+                None,
+                actor=get_current_user().username,
+                action_type="user_create",
+                action_detail={"username": username, "role_id": role_id, "is_active": is_active},
+                source_module="admin",
+            )
             flash("user created", "success")
     elif action == "update":
         user_id = int(request.form.get("user_id", "0") or 0)
@@ -47,9 +55,35 @@ def user_actions():
             update_user(user_id, role_id, is_active, full_name)
             if password:
                 update_password(user_id, generate_password_hash(password))
+            log_vehicle_action(
+                None,
+                actor=get_current_user().username,
+                action_type="user_update",
+                action_detail={
+                    "user_id": user_id,
+                    "role_id": role_id,
+                    "is_active": is_active,
+                    "password_changed": bool(password),
+                },
+                source_module="admin",
+            )
             flash("user updated", "success")
         else:
             flash("invalid user update", "warning")
+    elif action == "delete":
+        user_id = int(request.form.get("user_id", "0") or 0)
+        if user_id:
+            soft_delete_user(user_id)
+            log_vehicle_action(
+                None,
+                actor=get_current_user().username,
+                action_type="user_delete",
+                action_detail={"user_id": user_id},
+                source_module="admin",
+            )
+            flash("user deleted", "success")
+        else:
+            flash("invalid user delete", "warning")
     return redirect(url_for("admin.user_list"))
 
 
@@ -86,6 +120,19 @@ def update_field_permissions():
             is_visible,
             is_editable,
             description,
+        )
+        log_vehicle_action(
+            None,
+            actor=get_current_user().username,
+            action_type="field_permission_update",
+            action_detail={
+                "permission_id": permission_id,
+                "access_level": access_level,
+                "min_role_code": min_role_code,
+                "is_visible": is_visible,
+                "is_editable": is_editable,
+            },
+            source_module="admin",
         )
         flash("field permission updated", "success")
     else:

@@ -1,5 +1,4 @@
 # app/blueprints/ui/routes.py
-import json
 import os
 import shutil
 
@@ -15,6 +14,13 @@ from ...repositories.vehicle_repo import (
     update_vehicle,
     create_vehicle,
 )
+from ...repositories.vehicle_media_repo import (
+    list_vehicle_media,
+    create_vehicle_media,
+    delete_vehicle_media,
+    update_vehicle_media_paths,
+)
+from ...repositories.vehicle_log_repo import log_vehicle_action
 
 def _require_login():
     u = get_current_user()
@@ -70,20 +76,6 @@ def _vehicle_image_dirs(vin: str):
     return legal_dir, photo_dir
 
 
-def _parse_image_list(value):
-    if not value:
-        return []
-    if isinstance(value, list):
-        return value
-    try:
-        data = json.loads(value)
-        if isinstance(data, list):
-            return data
-    except Exception:
-        pass
-    return [v for v in str(value).split(",") if v]
-
-
 def _save_uploads(files, target_dir):
     saved = []
     if not files:
@@ -115,6 +107,21 @@ def _payload_from_form():
         if name in request.form:
             payload[name] = request.form.get(name)
     return payload
+
+
+def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]:
+    base_dir = _image_base_dir()
+    safe_vin = _safe_vin(vin)
+    rel_paths = []
+    for name in filenames:
+        if not name:
+            continue
+        rel_paths.append(os.path.relpath(os.path.join(base_dir, safe_vin, category, name), base_dir))
+    return rel_paths
+
+
+def _media_filenames(rows: list[dict]) -> list[str]:
+    return [os.path.basename(row.get("file_path", "")) for row in rows if row.get("file_path")]
 
 
 @bp.get("/vehicle/image/<vin>/<category>/<filename>")
@@ -189,12 +196,17 @@ def vehicle_detail(vehicle_id: int):
     except Exception:
         status = None
 
+    legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
+    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, "vehicle_photo"))
+
     return render_template(
         "vehicle/detail.html",
         active_menu="vehicle",
         vehicle=vehicle_vm,
         status=status,
         recent_logs=[],
+        legal_docs=legal_docs,
+        vehicle_photos=vehicle_photos,
     )
 
 @bp.route("/vehicle/<int:vehicle_id>/edit", methods=["GET","POST"])
@@ -219,27 +231,6 @@ def vehicle_edit(vehicle_id: int):
             return redirect(url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
         legal_dir, photo_dir = _vehicle_image_dirs(vin)
-        payload["legal_doc_dir"] = os.path.relpath(legal_dir, os.getcwd())
-        payload["vehicle_photo_dir"] = os.path.relpath(photo_dir, os.getcwd())
-
-        current_legal = _parse_image_list(vehicle.get("legal_doc"))
-        current_photos = _parse_image_list(vehicle.get("vehicle_photo"))
-
-        removed_legal = request.form.get("remove_legal_docs", "").split(",")
-        removed_photos = request.form.get("remove_vehicle_photos", "").split(",")
-
-        _remove_files(legal_dir, removed_legal)
-        _remove_files(photo_dir, removed_photos)
-
-        updated_legal = [f for f in current_legal if f not in removed_legal]
-        updated_photos = [f for f in current_photos if f not in removed_photos]
-
-        new_legal = _save_uploads(request.files.getlist("legal_doc_files"), legal_dir)
-        new_photos = _save_uploads(request.files.getlist("vehicle_photo_files"), photo_dir)
-
-        payload["legal_doc"] = json.dumps(updated_legal + new_legal)
-        payload["vehicle_photo"] = json.dumps(updated_photos + new_photos)
-
         if vehicle.get("vin") and vehicle.get("vin") != vin:
             old_legal_dir, old_photo_dir = _vehicle_image_dirs(vehicle["vin"])
             if os.path.exists(old_legal_dir):
@@ -248,12 +239,64 @@ def vehicle_edit(vehicle_id: int):
             if os.path.exists(old_photo_dir):
                 os.makedirs(os.path.dirname(photo_dir), exist_ok=True)
                 shutil.move(old_photo_dir, photo_dir)
+            update_vehicle_media_paths(
+                vehicle_id,
+                f"{_safe_vin(vehicle['vin'])}/",
+                f"{_safe_vin(vin)}/",
+            )
 
+        removed_legal = request.form.get("remove_legal_docs", "").split(",")
+        removed_photos = request.form.get("remove_vehicle_photos", "").split(",")
+
+        _remove_files(legal_dir, removed_legal)
+        _remove_files(photo_dir, removed_photos)
+
+        delete_vehicle_media(
+            vehicle_id,
+            "legal_doc",
+            _media_rel_paths(vin, "legal_doc", removed_legal),
+        )
+        delete_vehicle_media(
+            vehicle_id,
+            "vehicle_photo",
+            _media_rel_paths(vin, "Vehicle_photo", removed_photos),
+        )
+
+        new_legal = _save_uploads(request.files.getlist("legal_doc_files"), legal_dir)
+        new_photos = _save_uploads(request.files.getlist("vehicle_photo_files"), photo_dir)
+
+        create_vehicle_media(
+            vehicle_id,
+            "legal_doc",
+            _media_rel_paths(vin, "legal_doc", new_legal),
+            get_current_user().user_id,
+        )
+        create_vehicle_media(
+            vehicle_id,
+            "vehicle_photo",
+            _media_rel_paths(vin, "Vehicle_photo", new_photos),
+            get_current_user().user_id,
+        )
+
+        payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
+        log_vehicle_action(
+            vehicle_id,
+            actor=get_current_user().username,
+            action_type="vehicle_update",
+            action_detail={
+                "vin": vin,
+                "removed_legal": [f for f in removed_legal if f],
+                "removed_photos": [f for f in removed_photos if f],
+                "new_legal": new_legal,
+                "new_photos": new_photos,
+            },
+            source_module="vehicle_edit",
+        )
         return redirect(url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
-    legal_docs = _parse_image_list(vehicle.get("legal_doc"))
-    vehicle_photos = _parse_image_list(vehicle.get("vehicle_photo"))
+    legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
+    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, "vehicle_photo"))
 
     return render_template(
         "vehicle/edit.html",
@@ -281,8 +324,6 @@ def vehicle_new():
             for field in VEHICLE_FIELDS:
                 vehicle[field["name"]] = source_vehicle.get(field["name"], "")
             vehicle["vin"] = ""
-            vehicle["legal_doc"] = ""
-            vehicle["vehicle_photo"] = ""
 
     if request.method == "POST":
         payload = _payload_from_form()
@@ -295,18 +336,32 @@ def vehicle_new():
             return redirect(url_for("ui.vehicle_new", lang=request.args.get("lang")))
 
         legal_dir, photo_dir = _vehicle_image_dirs(vin)
-        payload["legal_doc_dir"] = os.path.relpath(legal_dir, os.getcwd())
-        payload["vehicle_photo_dir"] = os.path.relpath(photo_dir, os.getcwd())
-
         new_legal = _save_uploads(request.files.getlist("legal_doc_files"), legal_dir)
         new_photos = _save_uploads(request.files.getlist("vehicle_photo_files"), photo_dir)
 
-        payload["legal_doc"] = json.dumps(new_legal)
-        payload["vehicle_photo"] = json.dumps(new_photos)
-
+        payload["updated_by"] = get_current_user().user_id
         create_vehicle(payload)
         created = get_vehicle_by_vin(vin)
         if created:
+            create_vehicle_media(
+                created["id"],
+                "legal_doc",
+                _media_rel_paths(vin, "legal_doc", new_legal),
+                get_current_user().user_id,
+            )
+            create_vehicle_media(
+                created["id"],
+                "vehicle_photo",
+                _media_rel_paths(vin, "Vehicle_photo", new_photos),
+                get_current_user().user_id,
+            )
+            log_vehicle_action(
+                created["id"],
+                actor=get_current_user().username,
+                action_type="vehicle_create",
+                action_detail={"vin": vin, "legal": new_legal, "photos": new_photos},
+                source_module="vehicle_new",
+            )
             return redirect(url_for("ui.vehicle_detail", vehicle_id=created["id"], lang=request.args.get("lang")))
         return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))
 
