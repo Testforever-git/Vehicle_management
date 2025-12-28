@@ -162,9 +162,10 @@ Fields:
 - UNIQUE(table_name, field_name)
 
 ## 8. RBAC Tables
-- user: username/password_hash/role_id/is_active/…
+- user: username/password_hash/role_id/is_active/is_deleted/expiored_time…
 - role: role_code + bilingual name
 - role_permission: (role_id, module_name, permission_type, allow_flag)
+- 删除用户时，永远不在数据库中删除用户记录，而是把is_deleted置为1
 
 ## 9. Change Rules
 - 不得把动态字段写入 vehicle（里程/油量/位置等）
