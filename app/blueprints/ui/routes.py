@@ -61,6 +61,17 @@ VEHICLE_FIELDS = [
     {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
 ]
 
+NULLABLE_NUMERIC_FIELDS = {
+    "owner_id",
+    "driver_id",
+    "garage_lat",
+    "garage_lng",
+}
+
+NULLABLE_TEXT_FIELDS = {
+    "ext_json",
+}
+
 _translator = Translator()
 
 
@@ -108,7 +119,17 @@ def _payload_from_form():
     for field in VEHICLE_FIELDS:
         name = field["name"]
         if name in request.form:
-            payload[name] = request.form.get(name)
+            value = request.form.get(name)
+            if isinstance(value, str):
+                value = value.strip()
+            if value == "" and (
+                field.get("type") in {"number", "date"}
+                or name in NULLABLE_NUMERIC_FIELDS
+                or name in NULLABLE_TEXT_FIELDS
+            ):
+                payload[name] = None
+            else:
+                payload[name] = value
     return payload
 
 
