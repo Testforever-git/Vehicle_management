@@ -7,7 +7,7 @@ class PermissionService:
         self.user = current_user
         self.matrix = {
             "public": {("vehicle", "view")},  # QR public uses basic view
-            "viewer": {("dashboard", "view"), ("vehicle", "view")},
+            "viewer": {("dashboard", "view")},
             "sales": {("dashboard", "view"), ("vehicle", "view"), ("vehicle", "edit"), ("vehicle_qr", "view")},
             "engineer": {("dashboard", "view"), ("vehicle", "view"), ("vehicle", "edit"), ("status", "view"), ("vehicle_qr", "view")},
             "finance": {("dashboard", "view"), ("vehicle", "view"), ("vehicle", "export")},
