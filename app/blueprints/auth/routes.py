@@ -1,6 +1,8 @@
 from flask import render_template, request, redirect, url_for, flash
+from werkzeug.security import check_password_hash
 from . import bp
-from ...security.mock_users import login_as, logout
+from ...repositories.user_repo import get_user_by_username
+from ...security.users import login_user, logout
 
 
 @bp.get("/login")
@@ -11,11 +13,18 @@ def login():
 @bp.post("/login")
 def login_post():
     username = request.form.get("username", "").strip()
-    role_code = request.form.get("role_code", "viewer").strip()
-    if not username:
-        flash("username required", "warning")
+    password = request.form.get("password", "").strip()
+    if not username or not password:
+        flash("username and password required", "warning")
         return redirect(url_for("auth.login"))
-    login_as(username=username, role_code=role_code)
+    user = get_user_by_username(username)
+    if not user or not user.get("is_active"):
+        flash("invalid credentials", "danger")
+        return redirect(url_for("auth.login"))
+    if not check_password_hash(user["password_hash"], password):
+        flash("invalid credentials", "danger")
+        return redirect(url_for("auth.login"))
+    login_user(user["id"])
     return redirect(url_for("ui.dashboard"))
 
 

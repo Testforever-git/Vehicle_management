@@ -3,7 +3,7 @@ from flask import request, session, current_app, url_for
 from .i18n import Translator
 from .security.permissions import PermissionService
 from .security.field_permissions import FieldPermissionService
-from .security.mock_users import get_current_user
+from .security.users import get_current_user
 
 _translator = Translator()
 

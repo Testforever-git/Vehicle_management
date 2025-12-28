@@ -1,7 +1,7 @@
 # app/blueprints/ui/routes.py
 from flask import render_template, redirect, url_for, abort, request
 from . import bp
-from ...security.mock_users import get_current_user
+from ...security.users import get_current_user
 from ...utils.masking import mask_plate
 from ...repositories.vehicle_repo import list_vehicles, get_vehicle, get_status, update_vehicle, ensure_dirs_saved
 
