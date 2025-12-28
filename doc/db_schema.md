@@ -25,6 +25,7 @@
 - UNIQUE(vin)
 
 ### Fields (summary)
+| Table   | Create Table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | vehicle | CREATE TABLE `vehicle` (
   `id` int NOT NULL AUTO_INCREMENT,
   `brand_jp` varchar(64) DEFAULT NULL,
@@ -61,29 +62,14 @@
   `note` text,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updated_by` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_vehicle_vin` (`vin`),
-  KEY `idx_vehicle_plate_no` (`plate_no`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  KEY `idx_vehicle_plate_no` (`plate_no`),
+  KEY `fk_vehicle_updated_by` (`updated_by`),
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
 
-+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Table        | Create Table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-+--------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| vehicle_file | CREATE TABLE `vehicle_file` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `vehicle_id` int NOT NULL,
-  `file_type` varchar(32) NOT NULL,
-  `file_path` varchar(255) NOT NULL,
-  `file_name` varchar(128) DEFAULT NULL,
-  `sort_order` int unsigned DEFAULT '0',
-  `ext_json` json DEFAULT NULL,
-  `note` text,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_vehicle_file_vehicle_id` (`vehicle_id`),
-  KEY `idx_vehicle_file_type` (`file_type`),
-  CONSTRAINT `fk_vehicle_file_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicle` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
 ## 3. vehicle_status
 ### Purpose
@@ -106,10 +92,34 @@
 ### Purpose
 所有文件/附件归档（照片/保险/车检/酒测等）。
 
-Fields:
-- id (PK)
-- vehicle_id (FK)
-- file_type, file_path, description, uploaded_by, uploaded_at
+CREATE TABLE vehicle_media (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+  vehicle_id INT NOT NULL,
+  uploaded_by INT NOT NULL,
+
+  file_type ENUM('photo','legal_doc') NOT NULL,
+  file_path VARCHAR(255) NOT NULL,
+
+  uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+
+  KEY idx_vf_vehicle_id (vehicle_id),
+  KEY idx_vf_vehicle_type (vehicle_id, file_type),
+  KEY idx_vf_uploaded_by (uploaded_by),
+
+  CONSTRAINT fk_vf_vehicle
+    FOREIGN KEY (vehicle_id)
+    REFERENCES vehicle(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_vf_uploaded_by
+    FOREIGN KEY (uploaded_by)
+    REFERENCES user(id)
+    ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 ## 5. vehicle_log
 ### Purpose
