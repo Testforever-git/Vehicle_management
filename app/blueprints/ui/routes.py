@@ -1,13 +1,139 @@
 # app/blueprints/ui/routes.py
-from flask import render_template, redirect, url_for, abort, request
+import os
+import shutil
+
+from flask import render_template, redirect, url_for, abort, request, flash, send_from_directory
 from . import bp
-from ...security.mock_users import get_current_user
+from ...security.users import get_current_user
 from ...utils.masking import mask_plate
-from ...repositories.vehicle_repo import list_vehicles, get_vehicle, get_status, update_vehicle, ensure_dirs_saved
+from ...repositories.vehicle_repo import (
+    list_vehicles,
+    get_vehicle,
+    get_vehicle_by_vin,
+    get_status,
+    update_vehicle,
+    create_vehicle,
+)
+from ...repositories.vehicle_media_repo import (
+    list_vehicle_media,
+    create_vehicle_media,
+    delete_vehicle_media,
+    update_vehicle_media_paths,
+)
+from ...repositories.vehicle_log_repo import log_vehicle_action
 
 def _require_login():
     u = get_current_user()
     return u.is_authenticated
+
+
+VEHICLE_FIELDS = [
+    {"name": "vin", "label": "VIN", "type": "text"},
+    {"name": "plate_no", "label": "Plate No", "type": "text"},
+    {"name": "brand_cn", "label": "Brand (CN)", "type": "text"},
+    {"name": "brand_jp", "label": "Brand (JP)", "type": "text"},
+    {"name": "model_cn", "label": "Model (CN)", "type": "text"},
+    {"name": "model_jp", "label": "Model (JP)", "type": "text"},
+    {"name": "color_cn", "label": "Color (CN)", "type": "text"},
+    {"name": "color_jp", "label": "Color (JP)", "type": "text"},
+    {"name": "model_year", "label": "Model Year", "type": "number"},
+    {"name": "type_designation_code", "label": "Type Designation Code", "type": "text"},
+    {"name": "classification_number", "label": "Classification Number", "type": "text"},
+    {"name": "engine_code", "label": "Engine Code", "type": "text"},
+    {"name": "engine_layout", "label": "Engine Layout", "type": "text"},
+    {"name": "displacement_cc", "label": "Displacement (cc)", "type": "number"},
+    {"name": "fuel_type", "label": "Fuel Type", "type": "text"},
+    {"name": "drive_type", "label": "Drive Type", "type": "text"},
+    {"name": "transmission", "label": "Transmission", "type": "text"},
+    {"name": "ownership_type", "label": "Ownership Type", "type": "text"},
+    {"name": "owner_id", "label": "Owner ID", "type": "text"},
+    {"name": "driver_id", "label": "Driver ID", "type": "text"},
+    {"name": "garage_name", "label": "Garage Name", "type": "text"},
+    {"name": "garage_address_jp", "label": "Garage Address (JP)", "type": "text"},
+    {"name": "garage_address_cn", "label": "Garage Address (CN)", "type": "text"},
+    {"name": "garage_postcode", "label": "Garage Postcode", "type": "text"},
+    {"name": "garage_lat", "label": "Garage Lat", "type": "text"},
+    {"name": "garage_lng", "label": "Garage Lng", "type": "text"},
+    {"name": "purchase_date", "label": "Purchase Date", "type": "date"},
+    {"name": "purchase_price", "label": "Purchase Price", "type": "number"},
+    {"name": "ext_json", "label": "Extra JSON", "type": "textarea"},
+    {"name": "note", "label": "Note", "type": "textarea"},
+]
+
+
+def _image_base_dir():
+    return os.path.join(os.getcwd(), "db", "image")
+
+
+def _safe_vin(vin: str) -> str:
+    return "".join([c if c.isalnum() or c in ("-", "_") else "_" for c in vin])
+
+
+def _vehicle_image_dirs(vin: str):
+    safe_vin = _safe_vin(vin)
+    legal_dir = os.path.join(_image_base_dir(), safe_vin, "legal_doc")
+    photo_dir = os.path.join(_image_base_dir(), safe_vin, "Vehicle_photo")
+    return legal_dir, photo_dir
+
+
+def _save_uploads(files, target_dir):
+    saved = []
+    if not files:
+        return saved
+    os.makedirs(target_dir, exist_ok=True)
+    for f in files:
+        if not f or not f.filename:
+            continue
+        name = os.path.basename(f.filename)
+        file_path = os.path.join(target_dir, name)
+        f.save(file_path)
+        saved.append(name)
+    return saved
+
+
+def _remove_files(target_dir, filenames):
+    for name in filenames:
+        if not name:
+            continue
+        file_path = os.path.join(target_dir, os.path.basename(name))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+
+def _payload_from_form():
+    payload = {}
+    for field in VEHICLE_FIELDS:
+        name = field["name"]
+        if name in request.form:
+            payload[name] = request.form.get(name)
+    return payload
+
+
+def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]:
+    base_dir = _image_base_dir()
+    safe_vin = _safe_vin(vin)
+    rel_paths = []
+    for name in filenames:
+        if not name:
+            continue
+        rel_paths.append(os.path.relpath(os.path.join(base_dir, safe_vin, category, name), base_dir))
+    return rel_paths
+
+
+def _media_filenames(rows: list[dict]) -> list[str]:
+    return [os.path.basename(row.get("file_path", "")) for row in rows if row.get("file_path")]
+
+
+@bp.get("/vehicle/image/<vin>/<category>/<filename>")
+def vehicle_image(vin: str, category: str, filename: str):
+    if not _require_login():
+        return redirect(url_for("auth.login"))
+    if category not in {"legal_doc", "Vehicle_photo"}:
+        abort(404)
+    safe_vin = _safe_vin(vin)
+    base_dir = _image_base_dir()
+    dir_path = os.path.join(base_dir, safe_vin, category)
+    return send_from_directory(dir_path, filename)
 
 @bp.get("/")
 def home():
@@ -61,9 +187,6 @@ def vehicle_detail(vehicle_id: int):
     if not vehicle:
         abort(404)
 
-    # 可选：把默认目录写回 DB（你不想自动写回就删掉这一行）
-    ensure_dirs_saved(vehicle_id)
-
     vehicle_vm = dict(vehicle)
     vehicle_vm["masked_plate_no"] = mask_plate(vehicle.get("plate_no", ""))
 
@@ -73,12 +196,17 @@ def vehicle_detail(vehicle_id: int):
     except Exception:
         status = None
 
+    legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
+    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, "vehicle_photo"))
+
     return render_template(
         "vehicle/detail.html",
         active_menu="vehicle",
         vehicle=vehicle_vm,
         status=status,
         recent_logs=[],
+        legal_docs=legal_docs,
+        vehicle_photos=vehicle_photos,
     )
 
 @bp.route("/vehicle/<int:vehicle_id>/edit", methods=["GET","POST"])
@@ -91,15 +219,160 @@ def vehicle_edit(vehicle_id: int):
         abort(404)
 
     if request.method == "POST":
-        payload = {
-            "brand_jp": request.form.get("brand_jp"),
-            "model_jp": request.form.get("model_jp"),
-            "type_designation_code": request.form.get("type_designation_code"),
-            "garage_name": request.form.get("garage_name"),
-            "garage_address_jp": request.form.get("garage_address_jp"),
-            "purchase_price": request.form.get("purchase_price"),
-        }
+        payload = _payload_from_form()
+        vin = (payload.get("vin") or "").strip()
+        if not vin:
+            flash("VIN is required", "warning")
+            return redirect(url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")))
+
+        existing = get_vehicle_by_vin(vin)
+        if existing and existing["id"] != vehicle_id:
+            flash("VIN already exists", "warning")
+            return redirect(url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")))
+
+        legal_dir, photo_dir = _vehicle_image_dirs(vin)
+        if vehicle.get("vin") and vehicle.get("vin") != vin:
+            old_legal_dir, old_photo_dir = _vehicle_image_dirs(vehicle["vin"])
+            if os.path.exists(old_legal_dir):
+                os.makedirs(os.path.dirname(legal_dir), exist_ok=True)
+                shutil.move(old_legal_dir, legal_dir)
+            if os.path.exists(old_photo_dir):
+                os.makedirs(os.path.dirname(photo_dir), exist_ok=True)
+                shutil.move(old_photo_dir, photo_dir)
+            update_vehicle_media_paths(
+                vehicle_id,
+                f"{_safe_vin(vehicle['vin'])}/",
+                f"{_safe_vin(vin)}/",
+            )
+
+        removed_legal = request.form.get("remove_legal_docs", "").split(",")
+        removed_photos = request.form.get("remove_vehicle_photos", "").split(",")
+
+        _remove_files(legal_dir, removed_legal)
+        _remove_files(photo_dir, removed_photos)
+
+        delete_vehicle_media(
+            vehicle_id,
+            "legal_doc",
+            _media_rel_paths(vin, "legal_doc", removed_legal),
+        )
+        delete_vehicle_media(
+            vehicle_id,
+            "vehicle_photo",
+            _media_rel_paths(vin, "Vehicle_photo", removed_photos),
+        )
+
+        new_legal = _save_uploads(request.files.getlist("legal_doc_files"), legal_dir)
+        new_photos = _save_uploads(request.files.getlist("vehicle_photo_files"), photo_dir)
+
+        create_vehicle_media(
+            vehicle_id,
+            "legal_doc",
+            _media_rel_paths(vin, "legal_doc", new_legal),
+            get_current_user().user_id,
+        )
+        create_vehicle_media(
+            vehicle_id,
+            "vehicle_photo",
+            _media_rel_paths(vin, "Vehicle_photo", new_photos),
+            get_current_user().user_id,
+        )
+
+        payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
+        log_vehicle_action(
+            vehicle_id,
+            actor=get_current_user().username,
+            action_type="vehicle_update",
+            action_detail={
+                "vin": vin,
+                "removed_legal": [f for f in removed_legal if f],
+                "removed_photos": [f for f in removed_photos if f],
+                "new_legal": new_legal,
+                "new_photos": new_photos,
+            },
+            source_module="vehicle_edit",
+        )
         return redirect(url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
-    return render_template("vehicle/edit.html", active_menu="vehicle", vehicle=vehicle)
+    legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
+    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, "vehicle_photo"))
+
+    return render_template(
+        "vehicle/edit.html",
+        active_menu="vehicle",
+        vehicle=vehicle,
+        vehicle_fields=VEHICLE_FIELDS,
+        legal_docs=legal_docs,
+        vehicle_photos=vehicle_photos,
+        form_action=url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")),
+        cancel_url=url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")),
+        is_new=False,
+    )
+
+
+@bp.route("/vehicle/new", methods=["GET", "POST"])
+def vehicle_new():
+    if not _require_login():
+        return redirect(url_for("auth.login"))
+
+    source_id = request.args.get("source_id")
+    vehicle = {field["name"]: "" for field in VEHICLE_FIELDS}
+    if source_id:
+        source_vehicle = get_vehicle(int(source_id))
+        if source_vehicle:
+            for field in VEHICLE_FIELDS:
+                vehicle[field["name"]] = source_vehicle.get(field["name"], "")
+            vehicle["vin"] = ""
+
+    if request.method == "POST":
+        payload = _payload_from_form()
+        vin = (payload.get("vin") or "").strip()
+        if not vin:
+            flash("VIN is required", "warning")
+            return redirect(url_for("ui.vehicle_new", lang=request.args.get("lang")))
+        if get_vehicle_by_vin(vin):
+            flash("VIN already exists", "warning")
+            return redirect(url_for("ui.vehicle_new", lang=request.args.get("lang")))
+
+        legal_dir, photo_dir = _vehicle_image_dirs(vin)
+        new_legal = _save_uploads(request.files.getlist("legal_doc_files"), legal_dir)
+        new_photos = _save_uploads(request.files.getlist("vehicle_photo_files"), photo_dir)
+
+        payload["updated_by"] = get_current_user().user_id
+        create_vehicle(payload)
+        created = get_vehicle_by_vin(vin)
+        if created:
+            create_vehicle_media(
+                created["id"],
+                "legal_doc",
+                _media_rel_paths(vin, "legal_doc", new_legal),
+                get_current_user().user_id,
+            )
+            create_vehicle_media(
+                created["id"],
+                "vehicle_photo",
+                _media_rel_paths(vin, "Vehicle_photo", new_photos),
+                get_current_user().user_id,
+            )
+            log_vehicle_action(
+                created["id"],
+                actor=get_current_user().username,
+                action_type="vehicle_create",
+                action_detail={"vin": vin, "legal": new_legal, "photos": new_photos},
+                source_module="vehicle_new",
+            )
+            return redirect(url_for("ui.vehicle_detail", vehicle_id=created["id"], lang=request.args.get("lang")))
+        return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))
+
+    return render_template(
+        "vehicle/edit.html",
+        active_menu="vehicle",
+        vehicle=vehicle,
+        vehicle_fields=VEHICLE_FIELDS,
+        legal_docs=[],
+        vehicle_photos=[],
+        form_action=url_for("ui.vehicle_new", lang=request.args.get("lang")),
+        cancel_url=url_for("ui.vehicle_list", lang=request.args.get("lang")),
+        is_new=True,
+    )

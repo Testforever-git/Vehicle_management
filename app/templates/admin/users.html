@@ -1,7 +1,103 @@
 {% extends 'base.html' %}
 {% block page_title %}{{ t('admin_users.page_title') }}{% endblock %}
 {% block content %}
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">{{ t('admin_users.create_title') }}</h5>
+  <form method="post" action="{{ url_for('admin.user_actions', lang=lang) }}" class="row g-3">
+    <input type="hidden" name="action" value="create">
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_users.username') }}</label>
+      <input class="form-control" name="username">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_users.full_name') }}</label>
+      <input class="form-control" name="full_name">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_users.password') }}</label>
+      <input type="password" class="form-control" name="password">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_users.role') }}</label>
+      <select class="form-select" name="role_id">
+        {% for role in roles %}
+          <option value="{{ role.id }}">{{ role.role_code }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_users.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_users.active_yes') }}</option>
+        <option value="0">{{ t('admin_users.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-primary w-100">{{ t('admin_users.create') }}</button>
+    </div>
+  </form>
+</div>
+
 <div class="card p-3">
-  <p class="ac-text-meta mb-0">{{ t('admin_users.demo_note') }}</p>
+  <h5 class="mb-3">{{ t('admin_users.list_title') }}</h5>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_users.username') }}</th>
+          <th>{{ t('admin_users.full_name') }}</th>
+          <th>{{ t('admin_users.role') }}</th>
+          <th>{{ t('admin_users.active') }}</th>
+          <th>{{ t('admin_users.password_reset') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.user_actions', lang=lang) }}">
+            <input type="hidden" name="user_id" value="{{ user.id }}">
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>
+              <input class="form-control form-control-sm" name="full_name" value="{{ user.full_name }}">
+            </td>
+            <td>
+              <select class="form-select form-select-sm" name="role_id">
+                {% for role in roles %}
+                  <option value="{{ role.id }}" {% if role.id == user.role_id %}selected{% endif %}>
+                    {{ role.role_code }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if user.is_active %}selected{% endif %}>{{ t('admin_users.active_yes') }}</option>
+                <option value="0" {% if not user.is_active %}selected{% endif %}>{{ t('admin_users.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <input type="password" class="form-control form-control-sm" name="password" placeholder="{{ t('admin_users.password_placeholder') }}">
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm" name="action" value="update">
+                {{ t('admin_users.update') }}
+              </button>
+              <button class="btn btn-outline-danger btn-sm ms-1" name="action" value="delete">
+                {{ t('admin_users.delete') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-muted">{{ t('admin_users.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
