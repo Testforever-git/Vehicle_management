@@ -108,7 +108,13 @@ def _payload_from_form():
     for field in VEHICLE_FIELDS:
         name = field["name"]
         if name in request.form:
-            payload[name] = request.form.get(name)
+            value = request.form.get(name)
+            if isinstance(value, str):
+                value = value.strip()
+            if value == "" and field.get("type") in {"number", "date"}:
+                payload[name] = None
+            else:
+                payload[name] = value
     return payload
 
 
