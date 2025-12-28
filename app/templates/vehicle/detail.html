@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% from 'macros/controls.html' import display_field %}
-{% from 'macros/buttons.html' import action_button %}
+{% from 'macros/controls.html' import display_field with context %}
+{% from 'macros/buttons.html' import action_button with context %}
 
 {% block page_title %}{{ vehicle.brand_jp }} / {{ vehicle.model_jp }}{% endblock %}
 
