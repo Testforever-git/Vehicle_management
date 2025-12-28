@@ -38,9 +38,25 @@ VEHICLE_COLUMNS = [
     "updated_by",
 ]
 
+_VEHICLE_COLUMN_CACHE = None
+
+
+def _available_columns():
+    global _VEHICLE_COLUMN_CACHE
+    if _VEHICLE_COLUMN_CACHE is None:
+        try:
+            rows = fetch_all("SHOW COLUMNS FROM vehicle")
+            _VEHICLE_COLUMN_CACHE = {row["Field"] for row in rows}
+        except Exception:
+            _VEHICLE_COLUMN_CACHE = set(VEHICLE_COLUMNS)
+    return [c for c in VEHICLE_COLUMNS if c in _VEHICLE_COLUMN_CACHE]
+
 
 def _select_columns():
-    return ", ".join([c for c in VEHICLE_COLUMNS if c != "id"]) + ", id"
+    columns = [c for c in _available_columns() if c != "id"]
+    if "id" not in columns:
+        columns.append("id")
+    return ", ".join(columns)
 
 
 def list_vehicles():
@@ -88,7 +104,7 @@ def get_status(vehicle_id: int):
     return fetch_one(sql, (vehicle_id,))
 
 def update_vehicle(vehicle_id: int, payload: dict):
-    fields = [c for c in VEHICLE_COLUMNS if c != "id"]
+    fields = [c for c in _available_columns() if c != "id"]
     sets = []
     params = []
     for f in fields:
@@ -104,7 +120,7 @@ def update_vehicle(vehicle_id: int, payload: dict):
 
 
 def create_vehicle(payload: dict):
-    fields = [c for c in VEHICLE_COLUMNS if c != "id"]
+    fields = [c for c in _available_columns() if c != "id"]
     values = []
     params = []
     for f in fields:
