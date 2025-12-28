@@ -1,7 +1,5 @@
-{% from 'macros/permissions.html' import can_view_field, can_edit_field with context %}
-
 {% macro display_field(table, field, label, value, style='body') -%}
-  {% if can_view_field(table, field) %}
+  {% if field_perm.can_view(table, field) %}
     <div class="ac-field ac-field-{{ style }}">
       <div class="ac-field-label">{{ label }}</div>
       <div class="ac-field-value ac-text-body">
@@ -12,8 +10,8 @@
 {%- endmacro %}
 
 {% macro input_field(table, field, label, name, value, type='text') -%}
-  {% set v = can_view_field(table, field) %}
-  {% set e = can_edit_field(table, field) %}
+  {% set v = field_perm.can_view(table, field) %}
+  {% set e = field_perm.can_edit(table, field) %}
   {% if not v %}
   {% elif v and not e %}
     <div class="mb-3 ac-field ac-field-readonly">
@@ -23,7 +21,11 @@
   {% else %}
     <div class="mb-3 ac-field ac-field-editable">
       <label class="form-label ac-field-label">{{ label }}</label>
-      <input class="form-control ac-input" type="{{ type }}" name="{{ name }}" value="{{ value or '' }}">
+      {% if type == 'textarea' %}
+        <textarea class="form-control ac-input" name="{{ name }}" rows="3">{{ value or '' }}</textarea>
+      {% else %}
+        <input class="form-control ac-input" type="{{ type }}" name="{{ name }}" value="{{ value or '' }}">
+      {% endif %}
     </div>
   {% endif %}
 {%- endmacro %}

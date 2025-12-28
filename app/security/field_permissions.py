@@ -1,51 +1,57 @@
+from ..repositories.field_permission_repo import list_field_permissions
+
+
 class FieldPermissionService:
     """
     field_perm.can_view(table, field)
     field_perm.can_edit(table, field)
-
-    Later: replace rules with vehicle_field_permission table lookup.
     """
+
     def __init__(self, current_user):
         self.user = current_user
         self.role = getattr(current_user, "role_code", "public") or "public"
+        self._rules = self._load_rules()
 
-        # table.field -> (access_level, editable)
-        self.rules = {
-            ("vehicle", "brand_jp"): ("basic", False),
-            ("vehicle", "model_jp"): ("basic", False),
-            ("vehicle", "plate_no"): ("basic", False),
-
-            ("vehicle", "vin"): ("advanced", False),
-            ("vehicle", "type_designation_code"): ("advanced", False),
-
-            ("vehicle", "garage_name"): ("advanced", True),
-            ("vehicle", "garage_address_jp"): ("advanced", True),
-
-            ("vehicle", "purchase_price"): ("admin", True),
-
-            # NEW (C): dirs should be visible to advanced+, editable by admin only (you can change later)
-            ("vehicle", "legal_doc_dir"): ("advanced", False),
-            ("vehicle", "vehicle_photo_dir"): ("advanced", False),
-
-            ("vehicle_status", "status"): ("basic", False),
-            ("vehicle_status", "mileage"): ("advanced", False),
-            ("vehicle_status", "fuel_level"): ("advanced", False),
-            ("vehicle_status", "location_desc"): ("advanced", False),
+    def _load_rules(self):
+        try:
+            rows = list_field_permissions()
+        except Exception:
+            rows = []
+        return {
+            (row["table_name"], row["field_name"]): row
+            for row in rows
         }
 
-    def _level_ok(self, level: str) -> bool:
-        if level == "basic":
-            return self.role in ["public", "viewer", "sales", "engineer", "finance", "admin"]
-        if level == "advanced":
-            return self.role in ["sales", "engineer", "finance", "admin"]
-        if level == "admin":
-            return self.role == "admin"
-        return False
+    def _role_rank(self, role_code: str) -> int:
+        rank = {
+            "public": 1,
+            "user": 1,
+            "engineer": 2,
+            "admin": 3,
+        }
+        return rank.get(role_code, 0)
+
+    def _level_rank(self, level: str) -> int:
+        return {"basic": 1, "advanced": 2, "admin": 3}.get(level, 3)
+
+    def _can_access(self, rule: dict) -> bool:
+        access_rank = self._level_rank(rule.get("access_level", "admin"))
+        min_role_rank = self._role_rank(rule.get("min_role_code", "admin"))
+        required_rank = max(access_rank, min_role_rank)
+        return self._role_rank(self.role) >= required_rank
 
     def can_view(self, table: str, field: str) -> bool:
-        level, _editable = self.rules.get((table, field), ("admin", False))
-        return self._level_ok(level)
+        rule = self._rules.get((table, field))
+        if not rule:
+            return self.role == "admin"
+        if not rule.get("is_visible"):
+            return False
+        return self._can_access(rule)
 
     def can_edit(self, table: str, field: str) -> bool:
-        level, editable = self.rules.get((table, field), ("admin", False))
-        return editable and self._level_ok(level)
+        rule = self._rules.get((table, field))
+        if not rule:
+            return self.role == "admin"
+        if not rule.get("is_editable"):
+            return False
+        return self._can_access(rule)

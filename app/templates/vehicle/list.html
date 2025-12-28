@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'macros/buttons.html' import action_button %}
+{% from 'macros/buttons.html' import action_button with context %}
 
 {% block page_title %}{{ t('vehicle_list.page_title') }}{% endblock %}
 
@@ -23,6 +23,7 @@
       <button class="btn btn-primary">{{ t('vehicle_list.search') }}</button>
       <button class="btn btn-outline-secondary">{{ t('vehicle_list.reset') }}</button>
       {{ action_button('vehicle','export', t('vehicle_list.export_csv'), '#', 'outline-secondary') }}
+      {{ action_button('vehicle','edit', t('vehicle_list.new_vehicle'), url_for('ui.vehicle_new', lang=lang), 'primary') }}
     </div>
   </div>
 </div>
