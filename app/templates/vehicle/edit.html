@@ -1,39 +1,224 @@
 {% extends 'base.html' %}
 {% from 'macros/controls.html' import input_field with context %}
 
-{% block page_title %}{{ t('vehicle_edit.page_title') }}{% endblock %}
+{% block page_title %}
+  {{ t('vehicle_edit.page_title_new') if is_new else t('vehicle_edit.page_title_edit') }}
+{% endblock %}
 
 {% block content %}
-<form method="post" class="card p-3">
+<form method="post" action="{{ form_action }}" class="card p-3" enctype="multipart/form-data" id="vehicle-form">
   <div class="row g-3">
-    <div class="col-md-4">
-      {{ input_field('vehicle','brand_jp', t('vehicle_edit.brand_jp'), 'brand_jp', vehicle.brand_jp) }}
-    </div>
-    <div class="col-md-4">
-      {{ input_field('vehicle','model_jp', t('vehicle_edit.model_jp'), 'model_jp', vehicle.model_jp) }}
-    </div>
-    <div class="col-md-4">
-      {{ input_field('vehicle','type_designation_code', t('vehicle_edit.type_designation_code'), 'type_designation_code', vehicle.type_designation_code) }}
-    </div>
+    {% for field in vehicle_fields %}
+      <div class="{{ 'col-12' if field.type == 'textarea' else 'col-md-4' }}">
+        {{ input_field('vehicle', field.name, field.label, field.name, vehicle[field.name], field.type) }}
+      </div>
+    {% endfor %}
+  </div>
 
-    <div class="col-md-6">
-      {{ input_field('vehicle','garage_name', t('vehicle_edit.garage_name'), 'garage_name', vehicle.garage_name) }}
-    </div>
-    <div class="col-md-6">
-      {{ input_field('vehicle','garage_address_jp', t('vehicle_edit.garage_address_jp'), 'garage_address_jp', vehicle.garage_address_jp) }}
-    </div>
+  <div class="row g-3 mt-2">
+    {% if field_perm.can_view('vehicle', 'legal_doc') %}
+      <div class="col-12">
+        <h5 class="mb-2">{{ t('vehicle_edit.legal_doc_title') }}</h5>
+        {% if field_perm.can_edit('vehicle', 'legal_doc') %}
+          <input class="form-control" type="file" name="legal_doc_files" id="legal-doc-input" multiple accept="image/*">
+        {% endif %}
+        <input type="hidden" name="remove_legal_docs" id="remove-legal-docs">
+        <div class="d-flex flex-wrap gap-2 mt-2" id="legal-doc-thumbs">
+          {% for filename in legal_docs %}
+            <div class="thumb-item" data-filename="{{ filename }}">
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" target="_blank">
+                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" alt="{{ filename }}">
+              </a>
+              {% if field_perm.can_edit('vehicle', 'legal_doc') %}
+                <button type="button" class="thumb-remove" data-target="legal" aria-label="{{ t('vehicle_edit.remove') }}">×</button>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
 
-    <div class="col-md-6">
-      {{ input_field('vehicle','purchase_price', t('vehicle_edit.purchase_price'), 'purchase_price', vehicle.purchase_price, 'number') }}
-      <p class="ac-text-meta">{{ t('vehicle_edit.admin_only_note') }}</p>
-    </div>
+    {% if field_perm.can_view('vehicle', 'vehicle_photo') %}
+      <div class="col-12">
+        <h5 class="mb-2">{{ t('vehicle_edit.vehicle_photo_title') }}</h5>
+        {% if field_perm.can_edit('vehicle', 'vehicle_photo') %}
+          <input class="form-control" type="file" name="vehicle_photo_files" id="vehicle-photo-input" multiple accept="image/*">
+        {% endif %}
+        <input type="hidden" name="remove_vehicle_photos" id="remove-vehicle-photos">
+        <div class="d-flex flex-wrap gap-2 mt-2" id="vehicle-photo-thumbs">
+          {% for filename in vehicle_photos %}
+            <div class="thumb-item" data-filename="{{ filename }}">
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='Vehicle_photo', filename=filename) }}" target="_blank">
+                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='Vehicle_photo', filename=filename) }}" alt="{{ filename }}">
+              </a>
+              {% if field_perm.can_edit('vehicle', 'vehicle_photo') %}
+                <button type="button" class="thumb-remove" data-target="photo" aria-label="{{ t('vehicle_edit.remove') }}">×</button>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
   </div>
 
   <div class="d-flex justify-content-end gap-2 mt-2">
-    <a class="btn btn-outline-secondary" href="{{ url_for('ui.vehicle_detail', vehicle_id=vehicle.id, lang=lang) }}">
+    <a class="btn btn-outline-secondary" href="{{ cancel_url }}">
       {{ t('vehicle_edit.cancel') }}
     </a>
-    <button class="btn btn-primary">{{ t('vehicle_edit.save') }}</button>
+    {% if perms.can('vehicle','edit') %}
+      {% if not is_new %}
+        <a class="btn btn-outline-primary" href="{{ url_for('ui.vehicle_new', source_id=vehicle.id, lang=lang) }}">
+          {{ t('vehicle_edit.save_as') }}
+        </a>
+      {% endif %}
+      <button class="btn btn-primary" id="save-button">{{ t('vehicle_edit.save') }}</button>
+    {% endif %}
   </div>
 </form>
+
+<style>
+  .thumb-item { position: relative; display: inline-flex; align-items: center; }
+  .thumb-item img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; }
+  .thumb-item.is-new img { border: 2px solid #28a745; }
+  .thumb-remove {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    border: none;
+    background: #dc3545;
+    color: #fff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+    padding: 0;
+  }
+</style>
+
+<script>
+  const form = document.getElementById('vehicle-form');
+  let isDirty = false;
+
+  form.addEventListener('change', () => {
+    isDirty = true;
+  });
+
+  form.addEventListener('input', () => {
+    isDirty = true;
+  });
+
+  form.addEventListener('submit', () => {
+    isDirty = false;
+  });
+
+  window.addEventListener('beforeunload', (event) => {
+    if (isDirty) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+
+  const removeLegalInput = document.getElementById('remove-legal-docs');
+  const removePhotoInput = document.getElementById('remove-vehicle-photos');
+
+  function updateRemoveList(input, name) {
+    const existing = input.value ? input.value.split(',') : [];
+    if (!existing.includes(name)) {
+      existing.push(name);
+      input.value = existing.join(',');
+    }
+  }
+
+  function setupRemoveButtons(containerId, hiddenInput) {
+    const container = document.getElementById(containerId);
+    if (!container || !hiddenInput) {
+      return;
+    }
+    container.addEventListener('click', (event) => {
+      if (!event.target.classList.contains('thumb-remove')) {
+        return;
+      }
+      const item = event.target.closest('.thumb-item');
+      if (!item) {
+        return;
+      }
+      const filename = item.dataset.filename;
+      if (filename) {
+        updateRemoveList(hiddenInput, filename);
+      }
+      item.remove();
+      isDirty = true;
+    });
+  }
+
+  setupRemoveButtons('legal-doc-thumbs', removeLegalInput);
+  setupRemoveButtons('vehicle-photo-thumbs', removePhotoInput);
+
+  function buildPreview(file, container, onRemove) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'thumb-item is-new';
+      const link = document.createElement('a');
+      link.href = e.target.result;
+      link.target = '_blank';
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      link.appendChild(img);
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'thumb-remove';
+      removeBtn.setAttribute('aria-label', '{{ t("vehicle_edit.remove") }}');
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', () => {
+        wrapper.remove();
+        if (onRemove) {
+          onRemove();
+        }
+        isDirty = true;
+      });
+      wrapper.appendChild(link);
+      wrapper.appendChild(removeBtn);
+      container.appendChild(wrapper);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function bindFileInput(inputId, containerId) {
+    const input = document.getElementById(inputId);
+    const container = document.getElementById(containerId);
+    if (!input || !container) {
+      return;
+    }
+    let fileItems = [];
+    let counter = 0;
+
+    const syncFiles = () => {
+      const dt = new DataTransfer();
+      fileItems.forEach((item) => {
+        dt.items.add(item.file);
+      });
+      input.files = dt.files;
+    };
+
+    input.addEventListener('change', () => {
+      const files = Array.from(input.files || []);
+      files.forEach((file) => {
+        const id = counter++;
+        fileItems.push({ id, file });
+        buildPreview(file, container, () => {
+          fileItems = fileItems.filter((item) => item.id !== id);
+          syncFiles();
+        });
+      });
+      syncFiles();
+      isDirty = true;
+    });
+  }
+
+  bindFileInput('legal-doc-input', 'legal-doc-thumbs');
+  bindFileInput('vehicle-photo-input', 'vehicle-photo-thumbs');
+</script>
 {% endblock %}

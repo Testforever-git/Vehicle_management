@@ -23,6 +23,7 @@
       <button class="btn btn-primary">{{ t('vehicle_list.search') }}</button>
       <button class="btn btn-outline-secondary">{{ t('vehicle_list.reset') }}</button>
       {{ action_button('vehicle','export', t('vehicle_list.export_csv'), '#', 'outline-secondary') }}
+      {{ action_button('vehicle','edit', t('vehicle_list.new_vehicle'), url_for('ui.vehicle_new', lang=lang), 'primary') }}
     </div>
   </div>
 </div>

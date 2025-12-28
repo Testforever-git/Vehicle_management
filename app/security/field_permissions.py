@@ -43,7 +43,7 @@ class FieldPermissionService:
     def can_view(self, table: str, field: str) -> bool:
         rule = self._rules.get((table, field))
         if not rule:
-            return False
+            return self.role == "admin"
         if not rule.get("is_visible"):
             return False
         return self._can_access(rule)
@@ -51,7 +51,7 @@ class FieldPermissionService:
     def can_edit(self, table: str, field: str) -> bool:
         rule = self._rules.get((table, field))
         if not rule:
-            return False
+            return self.role == "admin"
         if not rule.get("is_editable"):
             return False
         return self._can_access(rule)
