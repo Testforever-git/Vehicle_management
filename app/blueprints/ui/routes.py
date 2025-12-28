@@ -68,6 +68,10 @@ NULLABLE_NUMERIC_FIELDS = {
     "garage_lng",
 }
 
+NULLABLE_TEXT_FIELDS = {
+    "ext_json",
+}
+
 _translator = Translator()
 
 
@@ -119,7 +123,9 @@ def _payload_from_form():
             if isinstance(value, str):
                 value = value.strip()
             if value == "" and (
-                field.get("type") in {"number", "date"} or name in NULLABLE_NUMERIC_FIELDS
+                field.get("type") in {"number", "date"}
+                or name in NULLABLE_NUMERIC_FIELDS
+                or name in NULLABLE_TEXT_FIELDS
             ):
                 payload[name] = None
             else:
