@@ -13,6 +13,15 @@
 
   <main class="container py-3">
     <h1 class="ac-title-main mb-3">{% block page_title %}{% endblock %}</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} py-2 mb-2">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
   </main>
 

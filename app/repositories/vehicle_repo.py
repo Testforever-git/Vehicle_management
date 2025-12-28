@@ -1,49 +1,95 @@
 # app/repositories/vehicle_repo.py
 from app.db.mysql import fetch_all, fetch_one, execute
 
-def _default_dirs(vehicle_id: int):
-    car_no = f"{vehicle_id:06d}"
-    return (
-        f"db/image/{car_no}/legal_doc",
-        f"db/image/{car_no}/vehicle_photo",
-    )
+VEHICLE_COLUMNS = [
+    "id",
+    "vin",
+    "plate_no",
+    "brand_cn",
+    "brand_jp",
+    "model_cn",
+    "model_jp",
+    "color_cn",
+    "color_jp",
+    "model_year",
+    "type_designation_code",
+    "classification_number",
+    "engine_code",
+    "engine_layout",
+    "displacement_cc",
+    "fuel_type",
+    "drive_type",
+    "transmission",
+    "ownership_type",
+    "owner_id",
+    "driver_id",
+    "garage_name",
+    "garage_address_jp",
+    "garage_address_cn",
+    "garage_postcode",
+    "garage_lat",
+    "garage_lng",
+    "purchase_date",
+    "purchase_price",
+    "ext_json",
+    "note",
+    "updated_by",
+]
+
+_VEHICLE_COLUMN_CACHE = None
+
+
+def _available_columns():
+    global _VEHICLE_COLUMN_CACHE
+    if _VEHICLE_COLUMN_CACHE is None:
+        try:
+            rows = fetch_all("SHOW COLUMNS FROM vehicle")
+            _VEHICLE_COLUMN_CACHE = {row["Field"] for row in rows}
+        except Exception:
+            _VEHICLE_COLUMN_CACHE = set(VEHICLE_COLUMNS)
+    return [c for c in VEHICLE_COLUMNS if c in _VEHICLE_COLUMN_CACHE]
+
+
+def _select_columns():
+    columns = [c for c in _available_columns() if c != "id"]
+    if "id" not in columns:
+        columns.append("id")
+    return ", ".join(columns)
+
 
 def list_vehicles():
     sql = """
     SELECT
       id, brand_jp, model_jp, plate_no, vin, type_designation_code,
-      garage_name, garage_address_jp, purchase_price,
-      legal_doc_dir, vehicle_photo_dir
+      garage_name, garage_address_jp, purchase_price
     FROM vehicle
     ORDER BY id DESC
     LIMIT 200
     """
     rows = fetch_all(sql)
-    for r in rows:
-        ld, vp = _default_dirs(r["id"])
-        if not r.get("legal_doc_dir"):
-            r["legal_doc_dir"] = ld
-        if not r.get("vehicle_photo_dir"):
-            r["vehicle_photo_dir"] = vp
     return rows
 
 def get_vehicle(vehicle_id: int):
-    sql = """
-    SELECT
-      id, brand_jp, model_jp, plate_no, vin, type_designation_code,
-      garage_name, garage_address_jp, purchase_price,
-      legal_doc_dir, vehicle_photo_dir
+    sql = f"""
+    SELECT {_select_columns()}
     FROM vehicle
     WHERE id = %s
     """
     r = fetch_one(sql, (vehicle_id,))
     if not r:
         return None
-    ld, vp = _default_dirs(r["id"])
-    if not r.get("legal_doc_dir"):
-        r["legal_doc_dir"] = ld
-    if not r.get("vehicle_photo_dir"):
-        r["vehicle_photo_dir"] = vp
+    return r
+
+
+def get_vehicle_by_vin(vin: str):
+    sql = f"""
+    SELECT {_select_columns()}
+    FROM vehicle
+    WHERE vin = %s
+    """
+    r = fetch_one(sql, (vin,))
+    if not r:
+        return None
     return r
 
 def get_status(vehicle_id: int):
@@ -56,8 +102,7 @@ def get_status(vehicle_id: int):
     return fetch_one(sql, (vehicle_id,))
 
 def update_vehicle(vehicle_id: int, payload: dict):
-    # 只允许更新这些字段（最小闭环）
-    fields = ["brand_jp","model_jp","type_designation_code","garage_name","garage_address_jp","purchase_price"]
+    fields = [c for c in _available_columns() if c != "id"]
     sets = []
     params = []
     for f in fields:
@@ -66,20 +111,22 @@ def update_vehicle(vehicle_id: int, payload: dict):
             params.append(payload[f])
     if not sets:
         return 0
+    sets.append("updated_at = NOW()")
     params.append(vehicle_id)
     sql = f"UPDATE vehicle SET {', '.join(sets)} WHERE id = %s"
     return execute(sql, tuple(params))
 
-def ensure_dirs_saved(vehicle_id: int):
-    """
-    可选：把默认目录写回 DB，确保后续业务都能直接用列值。
-    """
-    v = get_vehicle(vehicle_id)
-    if not v:
+
+def create_vehicle(payload: dict):
+    fields = [c for c in _available_columns() if c != "id"]
+    values = []
+    params = []
+    for f in fields:
+        if f in payload:
+            values.append(f)
+            params.append(payload[f])
+    if not values:
         return 0
-    sql = """
-    UPDATE vehicle
-    SET legal_doc_dir = %s, vehicle_photo_dir = %s
-    WHERE id = %s
-    """
-    return execute(sql, (v["legal_doc_dir"], v["vehicle_photo_dir"], vehicle_id))
+    placeholders = ", ".join(["%s"] * len(values))
+    sql = f"INSERT INTO vehicle ({', '.join(values)}) VALUES ({placeholders})"
+    return execute(sql, tuple(params))
