@@ -1,4 +1,6 @@
 # app/repositories/vehicle_repo.py
+import json
+
 from app.db.mysql import fetch_all, fetch_one, execute
 
 VEHICLE_COLUMNS = [

@@ -23,19 +23,53 @@
 
 ### Key Constraints
 - UNIQUE(vin)
-- UNIQUE(plate_no)
 
 ### Fields (summary)
-- id (PK)
-- vin, plate_no
-- brand_cn/brand_jp, model_cn/model_jp, color_cn/color_jp, model_year
-- type_designation_code（型式指定番号）, classification_number（類別区分番号）
-- engine_code, engine_layout, displacement_cc, fuel_type, drive_type, transmission
-- ownership_type, owner_id, driver_id
-- garage_name, garage_address_jp/cn, garage_postcode, garage_lat/lng
-- purchase_date, purchase_price
-- legal_doc, vehicle_photo
-- ext_json, note, created_at, updated_at
+| Table   | Create Table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| vehicle | CREATE TABLE `vehicle` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `brand_jp` varchar(64) DEFAULT NULL,
+  `model_cn` varchar(64) DEFAULT NULL,
+  `model_jp` varchar(64) DEFAULT NULL,
+  `color_cn` varchar(32) DEFAULT NULL,
+  `color_jp` varchar(32) DEFAULT NULL,
+  `model_year` smallint unsigned DEFAULT NULL,
+  `plate_no` varchar(64) DEFAULT NULL,
+  `brand_cn` varchar(64) DEFAULT NULL,
+  `vin` varchar(64) NOT NULL,
+  `type_designation_code` varchar(64) DEFAULT NULL,
+  `classification_number` varchar(32) DEFAULT NULL,
+  `engine_code` varchar(32) DEFAULT NULL,
+  `engine_layout` varchar(32) DEFAULT NULL,
+  `displacement_cc` int unsigned DEFAULT NULL,
+  `fuel_type` varchar(32) DEFAULT NULL,
+  `drive_type` varchar(32) DEFAULT NULL,
+  `transmission` varchar(32) DEFAULT NULL,
+  `ownership_type` varchar(32) DEFAULT NULL,
+  `owner_id` bigint unsigned DEFAULT NULL,
+  `driver_id` bigint unsigned DEFAULT NULL,
+  `garage_name` varchar(128) DEFAULT NULL,
+  `garage_address_jp` varchar(255) DEFAULT NULL,
+  `garage_address_cn` varchar(255) DEFAULT NULL,
+  `garage_postcode` varchar(16) DEFAULT NULL,
+  `garage_lat` decimal(10,7) DEFAULT NULL,
+  `garage_lng` decimal(10,7) DEFAULT NULL,
+  `purchase_date` date DEFAULT NULL,
+  `purchase_price` bigint unsigned DEFAULT NULL,
+  `legal_doc` varchar(255) DEFAULT NULL,
+  `vehicle_photo` varchar(255) DEFAULT NULL,
+  `ext_json` json DEFAULT NULL,
+  `note` text,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updated_by` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_vehicle_vin` (`vin`),
+  KEY `idx_vehicle_plate_no` (`plate_no`),
+  KEY `fk_vehicle_updated_by` (`updated_by`),
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
+
 
 ## 3. vehicle_status
 ### Purpose
@@ -58,10 +92,34 @@
 ### Purpose
 所有文件/附件归档（照片/保险/车检/酒测等）。
 
-Fields:
-- id (PK)
-- vehicle_id (FK)
-- file_type, file_path, description, uploaded_by, uploaded_at
+CREATE TABLE vehicle_media (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+  vehicle_id INT NOT NULL,
+  uploaded_by INT NOT NULL,
+
+  file_type ENUM('photo','legal_doc') NOT NULL,
+  file_path VARCHAR(255) NOT NULL,
+
+  uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+
+  KEY idx_vf_vehicle_id (vehicle_id),
+  KEY idx_vf_vehicle_type (vehicle_id, file_type),
+  KEY idx_vf_uploaded_by (uploaded_by),
+
+  CONSTRAINT fk_vf_vehicle
+    FOREIGN KEY (vehicle_id)
+    REFERENCES vehicle(id)
+    ON DELETE CASCADE,
+
+  CONSTRAINT fk_vf_uploaded_by
+    FOREIGN KEY (uploaded_by)
+    REFERENCES user(id)
+    ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 ## 5. vehicle_log
 ### Purpose
@@ -104,14 +162,14 @@ Fields:
 - UNIQUE(table_name, field_name)
 
 ## 8. RBAC Tables
-- user: username/password_hash/role_id/is_active/…
+- user: username/password_hash/role_id/is_active/is_deleted/expiored_time…
 - role: role_code + bilingual name
 - role_permission: (role_id, module_name, permission_type, allow_flag)
+- 删除用户时，永远不在数据库中删除用户记录，而是把is_deleted置为1
 
 ## 9. Change Rules
 - 不得把动态字段写入 vehicle（里程/油量/位置等）
 - 任何新字段新增：优先 ext_json；高频稳定后再“升格”为列
-<<<<<<< HEAD
 - 所有跨模块状态更新必须写 vehicle_log
 
 
@@ -123,6 +181,3 @@ Fields:
   user
   password
   charset
-=======
-- 所有跨模块状态更新必须写 vehicle_log
->>>>>>> e18cd7c57d7aa5bd910b55c6e63eea0d46441285
