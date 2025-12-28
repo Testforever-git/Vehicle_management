@@ -2,8 +2,9 @@
 import os
 import shutil
 
-from flask import render_template, redirect, url_for, abort, request, flash, send_from_directory
+from flask import render_template, redirect, url_for, abort, request, flash, send_from_directory, session
 from . import bp
+from ...i18n import Translator
 from ...security.users import get_current_user
 from ...utils.masking import mask_plate
 from ...repositories.vehicle_repo import (
@@ -28,37 +29,39 @@ def _require_login():
 
 
 VEHICLE_FIELDS = [
-    {"name": "vin", "label": "VIN", "type": "text"},
-    {"name": "plate_no", "label": "Plate No", "type": "text"},
-    {"name": "brand_cn", "label": "Brand (CN)", "type": "text"},
-    {"name": "brand_jp", "label": "Brand (JP)", "type": "text"},
-    {"name": "model_cn", "label": "Model (CN)", "type": "text"},
-    {"name": "model_jp", "label": "Model (JP)", "type": "text"},
-    {"name": "color_cn", "label": "Color (CN)", "type": "text"},
-    {"name": "color_jp", "label": "Color (JP)", "type": "text"},
-    {"name": "model_year", "label": "Model Year", "type": "number"},
-    {"name": "type_designation_code", "label": "Type Designation Code", "type": "text"},
-    {"name": "classification_number", "label": "Classification Number", "type": "text"},
-    {"name": "engine_code", "label": "Engine Code", "type": "text"},
-    {"name": "engine_layout", "label": "Engine Layout", "type": "text"},
-    {"name": "displacement_cc", "label": "Displacement (cc)", "type": "number"},
-    {"name": "fuel_type", "label": "Fuel Type", "type": "text"},
-    {"name": "drive_type", "label": "Drive Type", "type": "text"},
-    {"name": "transmission", "label": "Transmission", "type": "text"},
-    {"name": "ownership_type", "label": "Ownership Type", "type": "text"},
-    {"name": "owner_id", "label": "Owner ID", "type": "text"},
-    {"name": "driver_id", "label": "Driver ID", "type": "text"},
-    {"name": "garage_name", "label": "Garage Name", "type": "text"},
-    {"name": "garage_address_jp", "label": "Garage Address (JP)", "type": "text"},
-    {"name": "garage_address_cn", "label": "Garage Address (CN)", "type": "text"},
-    {"name": "garage_postcode", "label": "Garage Postcode", "type": "text"},
-    {"name": "garage_lat", "label": "Garage Lat", "type": "text"},
-    {"name": "garage_lng", "label": "Garage Lng", "type": "text"},
-    {"name": "purchase_date", "label": "Purchase Date", "type": "date"},
-    {"name": "purchase_price", "label": "Purchase Price", "type": "number"},
-    {"name": "ext_json", "label": "Extra JSON", "type": "textarea"},
-    {"name": "note", "label": "Note", "type": "textarea"},
+    {"name": "vin", "label_key": "vehicle_edit.fields.vin", "type": "text"},
+    {"name": "plate_no", "label_key": "vehicle_edit.fields.plate_no", "type": "text"},
+    {"name": "brand_cn", "label_key": "vehicle_edit.fields.brand_cn", "type": "text"},
+    {"name": "brand_jp", "label_key": "vehicle_edit.fields.brand_jp", "type": "text"},
+    {"name": "model_cn", "label_key": "vehicle_edit.fields.model_cn", "type": "text"},
+    {"name": "model_jp", "label_key": "vehicle_edit.fields.model_jp", "type": "text"},
+    {"name": "color_cn", "label_key": "vehicle_edit.fields.color_cn", "type": "text"},
+    {"name": "color_jp", "label_key": "vehicle_edit.fields.color_jp", "type": "text"},
+    {"name": "model_year", "label_key": "vehicle_edit.fields.model_year", "type": "number"},
+    {"name": "type_designation_code", "label_key": "vehicle_edit.fields.type_designation_code", "type": "text"},
+    {"name": "classification_number", "label_key": "vehicle_edit.fields.classification_number", "type": "text"},
+    {"name": "engine_code", "label_key": "vehicle_edit.fields.engine_code", "type": "text"},
+    {"name": "engine_layout", "label_key": "vehicle_edit.fields.engine_layout", "type": "text"},
+    {"name": "displacement_cc", "label_key": "vehicle_edit.fields.displacement_cc", "type": "number"},
+    {"name": "fuel_type", "label_key": "vehicle_edit.fields.fuel_type", "type": "text"},
+    {"name": "drive_type", "label_key": "vehicle_edit.fields.drive_type", "type": "text"},
+    {"name": "transmission", "label_key": "vehicle_edit.fields.transmission", "type": "text"},
+    {"name": "ownership_type", "label_key": "vehicle_edit.fields.ownership_type", "type": "text"},
+    {"name": "owner_id", "label_key": "vehicle_edit.fields.owner_id", "type": "text"},
+    {"name": "driver_id", "label_key": "vehicle_edit.fields.driver_id", "type": "text"},
+    {"name": "garage_name", "label_key": "vehicle_edit.fields.garage_name", "type": "text"},
+    {"name": "garage_address_jp", "label_key": "vehicle_edit.fields.garage_address_jp", "type": "text"},
+    {"name": "garage_address_cn", "label_key": "vehicle_edit.fields.garage_address_cn", "type": "text"},
+    {"name": "garage_postcode", "label_key": "vehicle_edit.fields.garage_postcode", "type": "text"},
+    {"name": "garage_lat", "label_key": "vehicle_edit.fields.garage_lat", "type": "text"},
+    {"name": "garage_lng", "label_key": "vehicle_edit.fields.garage_lng", "type": "text"},
+    {"name": "purchase_date", "label_key": "vehicle_edit.fields.purchase_date", "type": "date"},
+    {"name": "purchase_price", "label_key": "vehicle_edit.fields.purchase_price", "type": "number"},
+    {"name": "ext_json", "label_key": "vehicle_edit.fields.ext_json", "type": "textarea"},
+    {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
 ]
+
+_translator = Translator()
 
 
 def _image_base_dir():
@@ -122,6 +125,10 @@ def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]
 
 def _media_filenames(rows: list[dict]) -> list[str]:
     return [os.path.basename(row.get("file_path", "")) for row in rows if row.get("file_path")]
+
+def _t(key: str) -> str:
+    lang = request.args.get("lang") or session.get("lang") or "jp"
+    return _translator.t(lang, key)
 
 
 @bp.get("/vehicle/image/<vin>/<category>/<filename>")
@@ -220,14 +227,14 @@ def vehicle_edit(vehicle_id: int):
 
     if request.method == "POST":
         payload = _payload_from_form()
-        vin = (payload.get("vin") or "").strip()
+        vin = (payload.get("vin") or vehicle.get("vin") or "").strip()
         if not vin:
-            flash("VIN is required", "warning")
+            flash(_t("vehicle_edit.messages.vin_required"), "warning")
             return redirect(url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
         existing = get_vehicle_by_vin(vin)
         if existing and existing["id"] != vehicle_id:
-            flash("VIN already exists", "warning")
+            flash(_t("vehicle_edit.messages.vin_exists"), "warning")
             return redirect(url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
         legal_dir, photo_dir = _vehicle_image_dirs(vin)
@@ -329,10 +336,10 @@ def vehicle_new():
         payload = _payload_from_form()
         vin = (payload.get("vin") or "").strip()
         if not vin:
-            flash("VIN is required", "warning")
+            flash(_t("vehicle_edit.messages.vin_required"), "warning")
             return redirect(url_for("ui.vehicle_new", lang=request.args.get("lang")))
         if get_vehicle_by_vin(vin):
-            flash("VIN already exists", "warning")
+            flash(_t("vehicle_edit.messages.vin_exists"), "warning")
             return redirect(url_for("ui.vehicle_new", lang=request.args.get("lang")))
 
         legal_dir, photo_dir = _vehicle_image_dirs(vin)

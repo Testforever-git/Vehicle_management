@@ -11,6 +11,9 @@ class FieldPermissionService:
         self.user = current_user
         self.role = getattr(current_user, "role_code", "public") or "public"
         self._rules = self._load_rules()
+        self._edit_overrides = {
+            "vehicle": {"vin", "plate_no", "brand_jp", "model_jp", "type_designation_code"},
+        }
 
     def _load_rules(self):
         try:
@@ -41,6 +44,8 @@ class FieldPermissionService:
         return self._role_rank(self.role) >= required_rank
 
     def can_view(self, table: str, field: str) -> bool:
+        if field in self._edit_overrides.get(table, set()):
+            return True
         rule = self._rules.get((table, field))
         if not rule:
             return self.role == "admin"
@@ -49,6 +54,8 @@ class FieldPermissionService:
         return self._can_access(rule)
 
     def can_edit(self, table: str, field: str) -> bool:
+        if field in self._edit_overrides.get(table, set()):
+            return True
         rule = self._rules.get((table, field))
         if not rule:
             return self.role == "admin"

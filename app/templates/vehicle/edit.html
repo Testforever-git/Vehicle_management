@@ -10,7 +10,7 @@
   <div class="row g-3">
     {% for field in vehicle_fields %}
       <div class="{{ 'col-12' if field.type == 'textarea' else 'col-md-4' }}">
-        {{ input_field('vehicle', field.name, field.label, field.name, vehicle[field.name], field.type) }}
+        {{ input_field('vehicle', field.name, t(field.label_key), field.name, vehicle[field.name], field.type) }}
       </div>
     {% endfor %}
   </div>
