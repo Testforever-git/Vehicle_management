@@ -5,7 +5,7 @@ jp:
   password: "パスワード"
   password_placeholder: "••••••••"
   submit: "ログイン"
-  demo_note: "デモ: データベースのユーザーでログインしてください。"
+  demo_note: "ログインしてください。"
 cn:
   page_title: "登录"
   username: "用户名"
@@ -13,4 +13,4 @@ cn:
   password: "密码"
   password_placeholder: "••••••••"
   submit: "登录"
-  demo_note: "演示：请使用数据库中的用户登录。"
+  demo_note: "请登录。"

@@ -10,6 +10,13 @@ def create_app() -> Flask:
 
     # ---- Register context processor (lang/t/perms/field_perm/current_user) ----
     try:
+        from .db.schema import ensure_schema
+        ensure_schema()
+        app.logger.info("Database schema ensured.")
+    except Exception as e:
+        app.logger.exception("Failed to ensure database schema: %s", e)
+
+    try:
         from .context import register_context
         register_context(app)
         app.logger.info("Context processor registered.")
