@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% from 'macros/controls.html' import display_field %}
-{% from 'macros/buttons.html' import action_button %}
+{% from 'macros/controls.html' import display_field with context %}
+{% from 'macros/buttons.html' import action_button with context %}
 
 {% block page_title %}{{ vehicle.brand_jp }} / {{ vehicle.model_jp }}{% endblock %}
 
@@ -45,8 +45,8 @@
 
     <div class="card p-3 mt-3">
       <div class="ac-title-sub">{{ t('vehicle_detail.section_files') }}</div>
-      {{ display_field('vehicle','legal_doc_dir', t('vehicle_detail.legal_doc_dir'), vehicle.legal_doc_dir) }}
-      {{ display_field('vehicle','vehicle_photo_dir', t('vehicle_detail.vehicle_photo_dir'), vehicle.vehicle_photo_dir) }}
+      {{ display_field('vehicle','legal_doc', t('vehicle_detail.legal_doc_dir'), legal_docs | length) }}
+      {{ display_field('vehicle','vehicle_photo', t('vehicle_detail.vehicle_photo_dir'), vehicle_photos | length) }}
       <p class="ac-text-meta mb-0">
         {{ t('vehicle_detail.files_hint') }}
       </p>
