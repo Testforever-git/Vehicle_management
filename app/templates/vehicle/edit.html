@@ -62,9 +62,9 @@
   </div>
 
   <div class="d-flex justify-content-end gap-2 mt-2">
-    <a class="btn btn-outline-secondary" href="{{ cancel_url }}">
+    <button class="btn btn-outline-secondary" type="button" id="cancel-button">
       {{ t('vehicle_edit.cancel') }}
-    </a>
+    </button>
     {% if perms.can('vehicle','edit') %}
       {% if not is_new %}
         <a class="btn btn-outline-primary" href="{{ url_for('ui.vehicle_new', source_id=vehicle.id, lang=lang) }}">
@@ -117,6 +117,7 @@
     max-height: 90vh;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform-origin: center center;
   }
   .image-preview-close {
     position: absolute;
@@ -151,6 +152,7 @@
   formFields.forEach((field) => {
     field.dataset.initialValue = field.value || '';
   });
+  updateDirtyState();
 
   function updateDirtyState() {
     formFields.forEach((field) => {
@@ -191,6 +193,8 @@
 
   const removeLegalInput = document.getElementById('remove-legal-docs');
   const removePhotoInput = document.getElementById('remove-vehicle-photos');
+  const initialLegalThumbs = document.getElementById('legal-doc-thumbs')?.innerHTML || '';
+  const initialPhotoThumbs = document.getElementById('vehicle-photo-thumbs')?.innerHTML || '';
 
   function updateRemoveList(input, name) {
     const existing = input.value ? input.value.split(',') : [];
@@ -246,7 +250,8 @@
       removeBtn.setAttribute('aria-label', '{{ t("vehicle_edit.remove") }}');
       removeBtn.textContent = '×';
       removeBtn.addEventListener('click', () => {
-        wrapper.remove();
+        wrapper.classList.add('is-removed');
+        removeBtn.disabled = true;
         if (onRemove) {
           onRemove();
         }
@@ -259,6 +264,7 @@
     reader.readAsDataURL(file);
   }
 
+  const fileResetters = [];
   function bindFileInput(inputId, containerId) {
     const input = document.getElementById(inputId);
     const container = document.getElementById(containerId);
@@ -289,6 +295,12 @@
       syncFiles();
       isDirty = true;
     });
+    fileResetters.push(() => {
+      fileItems = [];
+      counter = 0;
+      const dt = new DataTransfer();
+      input.files = dt.files;
+    });
   }
 
   bindFileInput('legal-doc-input', 'legal-doc-thumbs');
@@ -297,12 +309,15 @@
   const overlay = document.getElementById('image-preview-overlay');
   const overlayImg = document.getElementById('image-preview-img');
   const overlayClose = overlay?.querySelector('.image-preview-close');
+  let previewScale = 1;
 
   function openPreview(src) {
     if (!overlay || !overlayImg) {
       return;
     }
     overlayImg.src = src;
+    previewScale = 1;
+    overlayImg.style.transform = 'scale(1)';
     overlay.classList.add('is-active');
   }
 
@@ -312,6 +327,7 @@
     }
     overlay.classList.remove('is-active');
     overlayImg.src = '';
+    overlayImg.style.transform = 'scale(1)';
   }
 
   document.addEventListener('click', (event) => {
@@ -330,5 +346,32 @@
   });
 
   overlayClose?.addEventListener('click', closePreview);
+
+  overlayImg?.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const direction = event.deltaY > 0 ? -1 : 1;
+    previewScale = Math.min(5, Math.max(0.2, previewScale + direction * 0.1));
+    overlayImg.style.transform = `scale(${previewScale})`;
+  });
+
+  document.getElementById('cancel-button')?.addEventListener('click', () => {
+    form.reset();
+    formFields.forEach((field) => {
+      field.value = field.dataset.initialValue || '';
+    });
+    removeLegalInput.value = '';
+    removePhotoInput.value = '';
+    const legalThumbs = document.getElementById('legal-doc-thumbs');
+    const photoThumbs = document.getElementById('vehicle-photo-thumbs');
+    if (legalThumbs) {
+      legalThumbs.innerHTML = initialLegalThumbs;
+    }
+    if (photoThumbs) {
+      photoThumbs.innerHTML = initialPhotoThumbs;
+    }
+    fileResetters.forEach((reset) => reset());
+    isDirty = false;
+    updateDirtyState();
+  });
 </script>
 {% endblock %}
