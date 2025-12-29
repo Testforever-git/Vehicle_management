@@ -26,7 +26,7 @@
         <div class="d-flex flex-wrap gap-2 mt-2" id="legal-doc-thumbs">
           {% for filename in legal_docs %}
             <div class="thumb-item" data-filename="{{ filename }}">
-              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" target="_blank">
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" class="thumb-link">
                 <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" alt="{{ filename }}">
               </a>
               {% if field_perm.can_edit('vehicle', 'legal_doc') %}
@@ -48,8 +48,8 @@
         <div class="d-flex flex-wrap gap-2 mt-2" id="vehicle-photo-thumbs">
           {% for filename in vehicle_photos %}
             <div class="thumb-item" data-filename="{{ filename }}">
-              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='Vehicle_photo', filename=filename) }}" target="_blank">
-                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='Vehicle_photo', filename=filename) }}" alt="{{ filename }}">
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=filename) }}" class="thumb-link">
+                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=filename) }}" alt="{{ filename }}">
               </a>
               {% if field_perm.can_edit('vehicle', 'vehicle_photo') %}
                 <button type="button" class="thumb-remove" data-target="photo" aria-label="{{ t('vehicle_edit.remove') }}">×</button>
@@ -80,6 +80,7 @@
   .thumb-item { position: relative; display: inline-flex; align-items: center; }
   .thumb-item img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; }
   .thumb-item.is-new img { border: 2px solid #28a745; }
+  .thumb-item.is-removed img { border: 2px solid #dc3545; opacity: 0.55; }
   .thumb-remove {
     position: absolute;
     top: -6px;
@@ -95,18 +96,86 @@
     text-align: center;
     padding: 0;
   }
+  .field-dirty .ac-input { color: #dc3545; }
+  .image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.15);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+  }
+  .image-preview-overlay.is-active { display: flex; }
+  .image-preview-content {
+    position: relative;
+    max-width: min(90vw, 1000px);
+    max-height: 90vh;
+  }
+  .image-preview-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  .image-preview-close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+    color: #333;
+    font-size: 18px;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
 </style>
+
+<div class="image-preview-overlay" id="image-preview-overlay">
+  <div class="image-preview-content">
+    <button type="button" class="image-preview-close" aria-label="Close preview">×</button>
+    <img src="" alt="preview" id="image-preview-img">
+  </div>
+</div>
 
 <script>
   const form = document.getElementById('vehicle-form');
   let isDirty = false;
 
+  const formFields = Array.from(form.querySelectorAll('.ac-input'));
+  formFields.forEach((field) => {
+    field.dataset.initialValue = field.value || '';
+  });
+
+  function updateDirtyState() {
+    formFields.forEach((field) => {
+      const current = field.value || '';
+      const initial = field.dataset.initialValue || '';
+      const wrapper = field.closest('.ac-field-editable');
+      if (!wrapper) {
+        return;
+      }
+      if (current !== initial) {
+        wrapper.classList.add('field-dirty');
+      } else {
+        wrapper.classList.remove('field-dirty');
+      }
+    });
+  }
+
   form.addEventListener('change', () => {
     isDirty = true;
+    updateDirtyState();
   });
 
   form.addEventListener('input', () => {
     isDirty = true;
+    updateDirtyState();
   });
 
   form.addEventListener('submit', () => {
@@ -148,7 +217,11 @@
       if (filename) {
         updateRemoveList(hiddenInput, filename);
       }
-      item.remove();
+      item.classList.add('is-removed');
+      const removeBtn = item.querySelector('.thumb-remove');
+      if (removeBtn) {
+        removeBtn.disabled = true;
+      }
       isDirty = true;
     });
   }
@@ -163,7 +236,7 @@
       wrapper.className = 'thumb-item is-new';
       const link = document.createElement('a');
       link.href = e.target.result;
-      link.target = '_blank';
+      link.className = 'thumb-link';
       const img = document.createElement('img');
       img.src = e.target.result;
       link.appendChild(img);
@@ -220,5 +293,42 @@
 
   bindFileInput('legal-doc-input', 'legal-doc-thumbs');
   bindFileInput('vehicle-photo-input', 'vehicle-photo-thumbs');
+
+  const overlay = document.getElementById('image-preview-overlay');
+  const overlayImg = document.getElementById('image-preview-img');
+  const overlayClose = overlay?.querySelector('.image-preview-close');
+
+  function openPreview(src) {
+    if (!overlay || !overlayImg) {
+      return;
+    }
+    overlayImg.src = src;
+    overlay.classList.add('is-active');
+  }
+
+  function closePreview() {
+    if (!overlay || !overlayImg) {
+      return;
+    }
+    overlay.classList.remove('is-active');
+    overlayImg.src = '';
+  }
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('.thumb-link');
+    if (!link) {
+      return;
+    }
+    event.preventDefault();
+    openPreview(link.href);
+  });
+
+  overlay?.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      closePreview();
+    }
+  });
+
+  overlayClose?.addEventListener('click', closePreview);
 </script>
 {% endblock %}
