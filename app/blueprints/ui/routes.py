@@ -61,6 +61,21 @@ VEHICLE_FIELDS = [
     {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
 ]
 
+NULLABLE_NUMERIC_FIELDS = {
+    "owner_id",
+    "driver_id",
+    "garage_lat",
+    "garage_lng",
+}
+
+NULLABLE_TEXT_FIELDS = {
+    "ext_json",
+}
+
+PHOTO_FILE_TYPE = "photo"
+PHOTO_DIR_CATEGORY = "vehicle_photo"
+LEGACY_PHOTO_DIR_CATEGORY = "Vehicle_photo"
+
 _translator = Translator()
 
 
@@ -75,7 +90,10 @@ def _safe_vin(vin: str) -> str:
 def _vehicle_image_dirs(vin: str):
     safe_vin = _safe_vin(vin)
     legal_dir = os.path.join(_image_base_dir(), safe_vin, "legal_doc")
-    photo_dir = os.path.join(_image_base_dir(), safe_vin, "Vehicle_photo")
+    photo_dir = os.path.join(_image_base_dir(), safe_vin, PHOTO_DIR_CATEGORY)
+    legacy_photo_dir = os.path.join(_image_base_dir(), safe_vin, LEGACY_PHOTO_DIR_CATEGORY)
+    if os.path.exists(legacy_photo_dir) and not os.path.exists(photo_dir):
+        photo_dir = legacy_photo_dir
     return legal_dir, photo_dir
 
 
@@ -108,7 +126,17 @@ def _payload_from_form():
     for field in VEHICLE_FIELDS:
         name = field["name"]
         if name in request.form:
-            payload[name] = request.form.get(name)
+            value = request.form.get(name)
+            if isinstance(value, str):
+                value = value.strip()
+            if value == "" and (
+                field.get("type") in {"number", "date"}
+                or name in NULLABLE_NUMERIC_FIELDS
+                or name in NULLABLE_TEXT_FIELDS
+            ):
+                payload[name] = None
+            else:
+                payload[name] = value
     return payload
 
 
@@ -135,11 +163,22 @@ def _t(key: str) -> str:
 def vehicle_image(vin: str, category: str, filename: str):
     if not _require_login():
         return redirect(url_for("auth.login"))
-    if category not in {"legal_doc", "Vehicle_photo"}:
+    if category not in {"legal_doc", PHOTO_DIR_CATEGORY, LEGACY_PHOTO_DIR_CATEGORY}:
         abort(404)
     safe_vin = _safe_vin(vin)
     base_dir = _image_base_dir()
-    dir_path = os.path.join(base_dir, safe_vin, category)
+    if category == "legal_doc":
+        dir_path = os.path.join(base_dir, safe_vin, category)
+    else:
+        candidate_dirs = [
+            os.path.join(base_dir, safe_vin, PHOTO_DIR_CATEGORY),
+            os.path.join(base_dir, safe_vin, LEGACY_PHOTO_DIR_CATEGORY),
+        ]
+        dir_path = candidate_dirs[0]
+        for candidate in candidate_dirs:
+            if os.path.exists(os.path.join(candidate, filename)):
+                dir_path = candidate
+                break
     return send_from_directory(dir_path, filename)
 
 @bp.get("/")
@@ -204,7 +243,7 @@ def vehicle_detail(vehicle_id: int):
         status = None
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
-    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, "vehicle_photo"))
+    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
 
     return render_template(
         "vehicle/detail.html",
@@ -265,8 +304,9 @@ def vehicle_edit(vehicle_id: int):
         )
         delete_vehicle_media(
             vehicle_id,
-            "vehicle_photo",
-            _media_rel_paths(vin, "Vehicle_photo", removed_photos),
+            PHOTO_FILE_TYPE,
+            _media_rel_paths(vin, PHOTO_DIR_CATEGORY, removed_photos)
+            + _media_rel_paths(vin, LEGACY_PHOTO_DIR_CATEGORY, removed_photos),
         )
 
         new_legal = _save_uploads(request.files.getlist("legal_doc_files"), legal_dir)
@@ -280,8 +320,8 @@ def vehicle_edit(vehicle_id: int):
         )
         create_vehicle_media(
             vehicle_id,
-            "vehicle_photo",
-            _media_rel_paths(vin, "Vehicle_photo", new_photos),
+            PHOTO_FILE_TYPE,
+            _media_rel_paths(vin, PHOTO_DIR_CATEGORY, new_photos),
             get_current_user().user_id,
         )
 
@@ -303,7 +343,7 @@ def vehicle_edit(vehicle_id: int):
         return redirect(url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
-    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, "vehicle_photo"))
+    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
 
     return render_template(
         "vehicle/edit.html",
@@ -358,8 +398,8 @@ def vehicle_new():
             )
             create_vehicle_media(
                 created["id"],
-                "vehicle_photo",
-                _media_rel_paths(vin, "Vehicle_photo", new_photos),
+                PHOTO_FILE_TYPE,
+                _media_rel_paths(vin, PHOTO_DIR_CATEGORY, new_photos),
                 get_current_user().user_id,
             )
             log_vehicle_action(

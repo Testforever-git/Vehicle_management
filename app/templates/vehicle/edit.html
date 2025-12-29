@@ -26,7 +26,7 @@
         <div class="d-flex flex-wrap gap-2 mt-2" id="legal-doc-thumbs">
           {% for filename in legal_docs %}
             <div class="thumb-item" data-filename="{{ filename }}">
-              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" target="_blank">
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" class="thumb-link">
                 <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='legal_doc', filename=filename) }}" alt="{{ filename }}">
               </a>
               {% if field_perm.can_edit('vehicle', 'legal_doc') %}
@@ -48,8 +48,8 @@
         <div class="d-flex flex-wrap gap-2 mt-2" id="vehicle-photo-thumbs">
           {% for filename in vehicle_photos %}
             <div class="thumb-item" data-filename="{{ filename }}">
-              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='Vehicle_photo', filename=filename) }}" target="_blank">
-                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='Vehicle_photo', filename=filename) }}" alt="{{ filename }}">
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=filename) }}" class="thumb-link">
+                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=filename) }}" alt="{{ filename }}">
               </a>
               {% if field_perm.can_edit('vehicle', 'vehicle_photo') %}
                 <button type="button" class="thumb-remove" data-target="photo" aria-label="{{ t('vehicle_edit.remove') }}">×</button>
@@ -62,9 +62,9 @@
   </div>
 
   <div class="d-flex justify-content-end gap-2 mt-2">
-    <a class="btn btn-outline-secondary" href="{{ cancel_url }}">
+    <button class="btn btn-outline-secondary" type="button" id="cancel-button">
       {{ t('vehicle_edit.cancel') }}
-    </a>
+    </button>
     {% if perms.can('vehicle','edit') %}
       {% if not is_new %}
         <a class="btn btn-outline-primary" href="{{ url_for('ui.vehicle_new', source_id=vehicle.id, lang=lang) }}">
@@ -80,6 +80,7 @@
   .thumb-item { position: relative; display: inline-flex; align-items: center; }
   .thumb-item img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; }
   .thumb-item.is-new img { border: 2px solid #28a745; }
+  .thumb-item.is-removed img { border: 2px solid #dc3545; opacity: 0.55; }
   .thumb-remove {
     position: absolute;
     top: -6px;
@@ -95,18 +96,88 @@
     text-align: center;
     padding: 0;
   }
+  .field-dirty .ac-input { color: #dc3545; }
+  .image-preview-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.15);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+  }
+  .image-preview-overlay.is-active { display: flex; }
+  .image-preview-content {
+    position: relative;
+    max-width: min(90vw, 1000px);
+    max-height: 90vh;
+  }
+  .image-preview-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    transform-origin: center center;
+  }
+  .image-preview-close {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+    color: #333;
+    font-size: 18px;
+    line-height: 28px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  }
 </style>
+
+<div class="image-preview-overlay" id="image-preview-overlay">
+  <div class="image-preview-content">
+    <button type="button" class="image-preview-close" aria-label="Close preview">×</button>
+    <img src="" alt="preview" id="image-preview-img">
+  </div>
+</div>
 
 <script>
   const form = document.getElementById('vehicle-form');
   let isDirty = false;
 
+  const formFields = Array.from(form.querySelectorAll('.ac-input'));
+  formFields.forEach((field) => {
+    field.dataset.initialValue = field.value || '';
+  });
+  updateDirtyState();
+
+  function updateDirtyState() {
+    formFields.forEach((field) => {
+      const current = field.value || '';
+      const initial = field.dataset.initialValue || '';
+      const wrapper = field.closest('.ac-field-editable');
+      if (!wrapper) {
+        return;
+      }
+      if (current !== initial) {
+        wrapper.classList.add('field-dirty');
+      } else {
+        wrapper.classList.remove('field-dirty');
+      }
+    });
+  }
+
   form.addEventListener('change', () => {
     isDirty = true;
+    updateDirtyState();
   });
 
   form.addEventListener('input', () => {
     isDirty = true;
+    updateDirtyState();
   });
 
   form.addEventListener('submit', () => {
@@ -122,6 +193,8 @@
 
   const removeLegalInput = document.getElementById('remove-legal-docs');
   const removePhotoInput = document.getElementById('remove-vehicle-photos');
+  const initialLegalThumbs = document.getElementById('legal-doc-thumbs')?.innerHTML || '';
+  const initialPhotoThumbs = document.getElementById('vehicle-photo-thumbs')?.innerHTML || '';
 
   function updateRemoveList(input, name) {
     const existing = input.value ? input.value.split(',') : [];
@@ -148,7 +221,11 @@
       if (filename) {
         updateRemoveList(hiddenInput, filename);
       }
-      item.remove();
+      item.classList.add('is-removed');
+      const removeBtn = item.querySelector('.thumb-remove');
+      if (removeBtn) {
+        removeBtn.disabled = true;
+      }
       isDirty = true;
     });
   }
@@ -163,7 +240,7 @@
       wrapper.className = 'thumb-item is-new';
       const link = document.createElement('a');
       link.href = e.target.result;
-      link.target = '_blank';
+      link.className = 'thumb-link';
       const img = document.createElement('img');
       img.src = e.target.result;
       link.appendChild(img);
@@ -173,7 +250,8 @@
       removeBtn.setAttribute('aria-label', '{{ t("vehicle_edit.remove") }}');
       removeBtn.textContent = '×';
       removeBtn.addEventListener('click', () => {
-        wrapper.remove();
+        wrapper.classList.add('is-removed');
+        removeBtn.disabled = true;
         if (onRemove) {
           onRemove();
         }
@@ -186,6 +264,7 @@
     reader.readAsDataURL(file);
   }
 
+  const fileResetters = [];
   function bindFileInput(inputId, containerId) {
     const input = document.getElementById(inputId);
     const container = document.getElementById(containerId);
@@ -216,9 +295,83 @@
       syncFiles();
       isDirty = true;
     });
+    fileResetters.push(() => {
+      fileItems = [];
+      counter = 0;
+      const dt = new DataTransfer();
+      input.files = dt.files;
+    });
   }
 
   bindFileInput('legal-doc-input', 'legal-doc-thumbs');
   bindFileInput('vehicle-photo-input', 'vehicle-photo-thumbs');
+
+  const overlay = document.getElementById('image-preview-overlay');
+  const overlayImg = document.getElementById('image-preview-img');
+  const overlayClose = overlay?.querySelector('.image-preview-close');
+  let previewScale = 1;
+
+  function openPreview(src) {
+    if (!overlay || !overlayImg) {
+      return;
+    }
+    overlayImg.src = src;
+    previewScale = 1;
+    overlayImg.style.transform = 'scale(1)';
+    overlay.classList.add('is-active');
+  }
+
+  function closePreview() {
+    if (!overlay || !overlayImg) {
+      return;
+    }
+    overlay.classList.remove('is-active');
+    overlayImg.src = '';
+    overlayImg.style.transform = 'scale(1)';
+  }
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('.thumb-link');
+    if (!link) {
+      return;
+    }
+    event.preventDefault();
+    openPreview(link.href);
+  });
+
+  overlay?.addEventListener('click', (event) => {
+    if (event.target === overlay) {
+      closePreview();
+    }
+  });
+
+  overlayClose?.addEventListener('click', closePreview);
+
+  overlayImg?.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const direction = event.deltaY > 0 ? -1 : 1;
+    previewScale = Math.min(5, Math.max(0.2, previewScale + direction * 0.1));
+    overlayImg.style.transform = `scale(${previewScale})`;
+  });
+
+  document.getElementById('cancel-button')?.addEventListener('click', () => {
+    form.reset();
+    formFields.forEach((field) => {
+      field.value = field.dataset.initialValue || '';
+    });
+    removeLegalInput.value = '';
+    removePhotoInput.value = '';
+    const legalThumbs = document.getElementById('legal-doc-thumbs');
+    const photoThumbs = document.getElementById('vehicle-photo-thumbs');
+    if (legalThumbs) {
+      legalThumbs.innerHTML = initialLegalThumbs;
+    }
+    if (photoThumbs) {
+      photoThumbs.innerHTML = initialPhotoThumbs;
+    }
+    fileResetters.forEach((reset) => reset());
+    isDirty = false;
+    updateDirtyState();
+  });
 </script>
 {% endblock %}
