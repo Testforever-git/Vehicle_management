@@ -152,14 +152,58 @@ Fields:
 ### Purpose
 字段级可见/可编辑配置（前端必须通过宏调用此规则）。
 
-Fields:
-- id (PK)
-- table_name, field_name
-- access_level (basic/advanced/admin)
-- min_role_code
-- is_visible, is_editable
-- description
-- UNIQUE(table_name, field_name)
+vehicle_field_permission | CREATE TABLE `vehicle_field_permission` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `role_id` int NOT NULL,
+  `table_name` varchar(64) NOT NULL,
+  `field_name` varchar(64) NOT NULL,
+  `access_level` int NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_role_table_field` (`role_id`,`table_name`,`field_name`),
+  KEY `idx_role_id` (`role_id`),
+  CONSTRAINT `fk_vfp_role` FOREIGN KEY (`role_id`) REFERENCES `role` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=197 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
+
+vehicle_field_permission（字段级权限表）
+一条记录代表：某角色（role_id）对某表某字段的访问级别
+权限判定只依赖 access_level（无额外布尔字段）
+
+access_level 定义（INT）
+0：DENY（不可见）
+10：VIEW（可见但只读）
+20：EDIT（可编辑）
+
+判定逻辑
+可见：access_level >= 10
+可编辑：access_level >= 20
+
+UI 控制:
+< 10：字段显示为 ***
+10-19：显示但禁用编辑（readonly/disabled）
+>= 20：可编辑
+
+考虑到每次增加/删除/改动字段时，vehicle_field_permission也需要联动修改。
+UI上设置字段权限时，table_name/field_name从 field_catalog表格读取，role name从role表获取。 均为下拉框选择。 table_name没有选中的时候，field_name为空。
+
+CREATE TABLE IF NOT EXISTS field_catalog (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  table_name VARCHAR(64) NOT NULL,
+  field_name VARCHAR(64) NOT NULL,
+  data_type VARCHAR(64) NOT NULL,
+  is_nullable TINYINT(1) NOT NULL,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_table_field (table_name, field_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+每次启动UI去设置字段权限之前，用下面的命令刷新field_catalog表。
+REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)
+SELECT table_name, column_name, data_type, (is_nullable='YES')
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND table_name IN ('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role');
+
 
 ## 8. RBAC Tables
 - user: username/password_hash/role_id/is_active/is_deleted/expiored_time…
