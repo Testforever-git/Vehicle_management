@@ -58,6 +58,82 @@ def upsert_field_permission(
     )
 
 
+def refresh_field_catalog():
+    execute(
+        """
+        REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)
+        SELECT table_name, column_name, data_type, (is_nullable = 'YES')
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name LIKE 'vehicle%'
+        """
+    )
+
+
+def upsert_field_permission(
+    role_id: int,
+    table_name: str,
+    field_name: str,
+    access_level: int,
+    description: str,
+):
+    execute(
+        """
+        INSERT INTO vehicle_field_permission
+        (role_id, table_name, field_name, access_level, description)
+        VALUES (%s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            access_level = VALUES(access_level),
+            description = VALUES(description),
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (role_id, table_name, field_name, access_level, description),
+    )
+
+
+def list_field_catalog():
+    return fetch_all(
+        """
+        SELECT table_name, field_name
+        FROM field_catalog
+        ORDER BY table_name, field_name
+        """
+    )
+
+
+def refresh_field_catalog():
+    execute(
+        """
+        REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)
+        SELECT table_name, column_name, data_type, (is_nullable = 'YES')
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name LIKE 'vehicle%'
+        """
+    )
+
+
+def upsert_field_permission(
+    role_id: int,
+    table_name: str,
+    field_name: str,
+    access_level: int,
+    description: str,
+):
+    execute(
+        """
+        INSERT INTO vehicle_field_permission
+        (role_id, table_name, field_name, access_level, description)
+        VALUES (%s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            access_level = VALUES(access_level),
+            description = VALUES(description),
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (role_id, table_name, field_name, access_level, description),
+    )
+
+
 def update_field_permission(
     permission_id: int,
     role_id: int,
