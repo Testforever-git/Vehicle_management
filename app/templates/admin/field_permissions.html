@@ -8,7 +8,7 @@
     <div class="row g-3">
       <div class="col-12 col-md-3">
         <label class="form-label ac-field-label">{{ t('admin_field_permissions.role') }}</label>
-        <select class="form-select" name="role_id">
+        <select class="form-select fp-select" name="role_id">
           <option value="">{{ t('admin_field_permissions.select_role') }}</option>
           {% for role in roles %}
             <option value="{{ role.id }}">{{ role.role_code }}</option>
@@ -17,7 +17,7 @@
       </div>
       <div class="col-12 col-md-3">
         <label class="form-label ac-field-label">{{ t('admin_field_permissions.table') }}</label>
-        <select class="form-select table-select" name="table_name">
+        <select class="form-select fp-select table-select" name="table_name">
           <option value="">{{ t('admin_field_permissions.select_table') }}</option>
           {% for table_name in table_names %}
             <option value="{{ table_name }}">{{ table_name }}</option>
@@ -26,7 +26,7 @@
       </div>
       <div class="col-12 col-md-3">
         <label class="form-label ac-field-label">{{ t('admin_field_permissions.field') }}</label>
-        <select class="form-select field-select" name="field_name" disabled>
+        <select class="form-select fp-select field-select" name="field_name" disabled>
           <option value="">{{ t('admin_field_permissions.select_field') }}</option>
           {% for item in field_catalog %}
             <option value="{{ item.field_name }}" data-table="{{ item.table_name }}">{{ item.field_name }}</option>
@@ -35,7 +35,7 @@
       </div>
       <div class="col-12 col-md-3">
         <label class="form-label ac-field-label">{{ t('admin_field_permissions.access_level') }}</label>
-        <select class="form-select" name="access_level">
+        <select class="form-select fp-select" name="access_level">
           {% for level in access_levels %}
             <option value="{{ level }}">{{ t('admin_field_permissions.access_level_' ~ level) }}</option>
           {% endfor %}
@@ -43,7 +43,7 @@
       </div>
       <div class="col-12">
         <label class="form-label ac-field-label">{{ t('admin_field_permissions.description') }}</label>
-        <input class="form-control" name="description" value="">
+        <input class="form-control fp-input" name="description" value="">
       </div>
       <div class="col-12">
         <button class="btn btn-primary w-100 w-md-auto">{{ t('admin_field_permissions.create') }}</button>
@@ -53,72 +53,100 @@
 </div>
 
 <div class="card p-3">
-  <h5 class="mb-3">{{ t('admin_field_permissions.list_title') }}</h5>
-  <div class="d-flex flex-column gap-3">
-    {% for item in field_permissions %}
-      <form method="post" action="{{ url_for('admin.update_field_permissions', lang=lang) }}" class="field-permission-form card border-0 shadow-sm p-3">
-        <input type="hidden" name="action" value="update">
-        <input type="hidden" name="permission_id" value="{{ item.id }}">
-        <div class="row g-3 align-items-end">
-          <div class="col-12 col-md-3">
-            <label class="form-label ac-field-label">{{ t('admin_field_permissions.role') }}</label>
-            <select class="form-select" name="role_id">
-              {% for role in roles %}
-                <option value="{{ role.id }}" {% if role.id == item.role_id %}selected{% endif %}>{{ role.role_code }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label ac-field-label">{{ t('admin_field_permissions.table') }}</label>
-            <select class="form-select table-select" name="table_name">
-              <option value="">{{ t('admin_field_permissions.select_table') }}</option>
-              {% for table_name in table_names %}
-                <option value="{{ table_name }}" {% if table_name == item.table_name %}selected{% endif %}>{{ table_name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label ac-field-label">{{ t('admin_field_permissions.field') }}</label>
-            <select class="form-select field-select" name="field_name">
-              <option value="">{{ t('admin_field_permissions.select_field') }}</option>
-              {% for catalog_item in field_catalog %}
-                <option value="{{ catalog_item.field_name }}"
-                        data-table="{{ catalog_item.table_name }}"
-                        {% if catalog_item.table_name == item.table_name and catalog_item.field_name == item.field_name %}selected{% endif %}>
-                  {{ catalog_item.field_name }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12 col-md-3">
-            <label class="form-label ac-field-label">{{ t('admin_field_permissions.access_level') }}</label>
-            <select class="form-select" name="access_level">
-              {% for level in access_levels %}
-                <option value="{{ level }}" {% if level == item.access_level %}selected{% endif %}>
-                  {{ t('admin_field_permissions.access_level_' ~ level) }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-12 col-md-9">
-            <label class="form-label ac-field-label">{{ t('admin_field_permissions.description') }}</label>
-            <input class="form-control" name="description" value="{{ item.description }}">
-          </div>
-          <div class="col-12 col-md-3">
-            <button class="btn btn-outline-primary w-100">{{ t('admin_field_permissions.update') }}</button>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h5 class="mb-0">{{ t('admin_field_permissions.list_title') }}</h5>
+    <button class="btn btn-outline-primary" form="field-permissions-list-form">
+      {{ t('admin_field_permissions.save') }}
+    </button>
+  </div>
+  <form method="post"
+        action="{{ url_for('admin.update_field_permissions', lang=lang) }}"
+        id="field-permissions-list-form"
+        class="field-permissions-list-form">
+    <input type="hidden" name="action" value="bulk_update">
+    <div class="d-flex flex-column gap-3">
+      {% for item in field_permissions %}
+        <div class="card border-0 shadow-sm p-3 field-permission-row">
+          <input type="hidden" name="permission_id" value="{{ item.id }}">
+          <div class="row g-2 align-items-end flex-lg-nowrap">
+            <div class="col-12 col-lg-auto">
+              <label class="form-label ac-field-label">{{ t('admin_field_permissions.role') }}</label>
+              <select class="form-select fp-select" name="role_id">
+                {% for role in roles %}
+                  <option value="{{ role.id }}" {% if role.id == item.role_id %}selected{% endif %}>
+                    {{ role.role_code }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-lg-auto">
+              <label class="form-label ac-field-label">{{ t('admin_field_permissions.table') }}</label>
+              <select class="form-select fp-select table-select" name="table_name">
+                <option value="">{{ t('admin_field_permissions.select_table') }}</option>
+                {% for table_name in table_names %}
+                  <option value="{{ table_name }}" {% if table_name == item.table_name %}selected{% endif %}>
+                    {{ table_name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-lg-auto">
+              <label class="form-label ac-field-label">{{ t('admin_field_permissions.field') }}</label>
+              <select class="form-select fp-select field-select" name="field_name">
+                <option value="">{{ t('admin_field_permissions.select_field') }}</option>
+                {% for catalog_item in field_catalog %}
+                  <option value="{{ catalog_item.field_name }}"
+                          data-table="{{ catalog_item.table_name }}"
+                          {% if catalog_item.table_name == item.table_name and catalog_item.field_name == item.field_name %}selected{% endif %}>
+                    {{ catalog_item.field_name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-lg-auto">
+              <label class="form-label ac-field-label">{{ t('admin_field_permissions.access_level') }}</label>
+              <select class="form-select fp-select" name="access_level">
+                {% for level in access_levels %}
+                  <option value="{{ level }}" {% if level == item.access_level %}selected{% endif %}>
+                    {{ t('admin_field_permissions.access_level_' ~ level) }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12 col-lg">
+              <label class="form-label ac-field-label">{{ t('admin_field_permissions.description') }}</label>
+              <input class="form-control fp-input" name="description" value="{{ item.description }}">
+            </div>
           </div>
         </div>
-      </form>
-    {% else %}
-      <div class="text-muted">{{ t('admin_field_permissions.empty') }}</div>
-    {% endfor %}
-  </div>
+      {% else %}
+        <div class="text-muted">{{ t('admin_field_permissions.empty') }}</div>
+      {% endfor %}
+    </div>
+  </form>
 </div>
+<style>
+  .fp-select {
+    max-width: 180px;
+  }
+  .fp-input {
+    max-width: 260px;
+  }
+  .field-permission-dirty {
+    color: #dc3545;
+  }
+  @media (max-width: 768px) {
+    .fp-select,
+    .fp-input {
+      max-width: 100%;
+    }
+  }
+</style>
 <script>
   (function () {
-    function updateFieldOptions(form) {
-      const tableSelect = form.querySelector(".table-select");
-      const fieldSelect = form.querySelector(".field-select");
+    function updateFieldOptions(scope) {
+      const tableSelect = scope.querySelector(".table-select");
+      const fieldSelect = scope.querySelector(".field-select");
       if (!tableSelect || !fieldSelect) {
         return;
       }
@@ -146,13 +174,26 @@
       }
     }
 
-    document.querySelectorAll(".field-permission-form").forEach((form) => {
-      updateFieldOptions(form);
-      const tableSelect = form.querySelector(".table-select");
+    document.querySelectorAll(".field-permission-form, .field-permission-row").forEach((scope) => {
+      updateFieldOptions(scope);
+      const tableSelect = scope.querySelector(".table-select");
       if (tableSelect) {
-        tableSelect.addEventListener("change", () => updateFieldOptions(form));
+        tableSelect.addEventListener("change", () => updateFieldOptions(scope));
       }
     });
+
+    const listForm = document.querySelector(".field-permissions-list-form");
+    if (listForm) {
+      listForm.querySelectorAll("select, input").forEach((control) => {
+        control.addEventListener("change", () => control.classList.add("field-permission-dirty"));
+        control.addEventListener("input", () => control.classList.add("field-permission-dirty"));
+      });
+      listForm.addEventListener("submit", () => {
+        listForm.querySelectorAll(".field-permission-dirty").forEach((control) => {
+          control.classList.remove("field-permission-dirty");
+        });
+      });
+    }
   })();
 </script>
 {% endblock %}

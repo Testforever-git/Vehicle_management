@@ -35,6 +35,18 @@ def list_field_catalog():
     )
 
 
+def refresh_field_catalog():
+    execute(
+        """
+        REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)
+        SELECT table_name, column_name, data_type, (is_nullable = 'YES')
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name LIKE 'vehicle%'
+        """
+    )
+
+
 def upsert_field_permission(
     role_id: int,
     table_name: str,
