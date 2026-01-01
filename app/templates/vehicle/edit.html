@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% from 'macros/controls.html' import input_field with context %}
+{% from 'macros/controls.html' import input_field, select_field with context %}
 
 {% block page_title %}
   {{ t('vehicle_edit.page_title_new') if is_new else t('vehicle_edit.page_title_edit') }}
@@ -10,7 +10,11 @@
   <div class="row g-3">
     {% for field in vehicle_fields %}
       <div class="{{ 'col-12' if field.type == 'textarea' else 'col-md-4' }}">
-        {{ input_field('vehicle', field.name, t(field.label_key), field.name, vehicle[field.name], field.type) }}
+        {% if field.type == 'select' %}
+          {{ select_field('vehicle', field.name, t(field.label_key), field.name, vehicle[field.name], master_data[field.options_key]) }}
+        {% else %}
+          {{ input_field('vehicle', field.name, t(field.label_key), field.name, vehicle[field.name], field.type) }}
+        {% endif %}
       </div>
     {% endfor %}
   </div>

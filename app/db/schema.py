@@ -172,8 +172,8 @@ def _seed_users():
 
 def _seed_field_permissions():
     rules = [
-        ("vehicle", "brand_jp", "basic", False, "车辆品牌(日文)"),
-        ("vehicle", "model_jp", "basic", False, "车辆型号(日文)"),
+        ("vehicle", "brand_id", "basic", False, "车辆品牌"),
+        ("vehicle", "model_id", "basic", False, "车辆型号"),
         ("vehicle", "plate_no", "basic", False, "车牌号"),
         ("vehicle", "vin", "advanced", False, "VIN"),
         ("vehicle", "type_designation_code", "advanced", False, "型式指定番号"),

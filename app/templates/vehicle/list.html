@@ -5,56 +5,155 @@
 
 {% block content %}
 <div class="card p-3 mb-3">
-  <div class="row g-2">
+  <form class="row g-2" method="get" action="{{ url_for('ui.vehicle_list', lang=lang) }}">
     <div class="col-md-3">
       <label class="form-label ac-field-label">{{ t('vehicle_list.brand_label') }}</label>
-      <input class="form-control ac-input" placeholder="{{ t('vehicle_list.brand_placeholder') }}">
+      <input class="form-control ac-input"
+             name="brand"
+             value="{{ filters.brand }}"
+             placeholder="{{ t('vehicle_list.brand_placeholder') }}">
     </div>
     <div class="col-md-3">
       <label class="form-label ac-field-label">{{ t('vehicle_list.status_label') }}</label>
-      <select class="form-select ac-input">
-        <option>{{ t('vehicle_list.status_all') }}</option>
+      <select class="form-select ac-input" name="status">
+        <option value="">{{ t('vehicle_list.status_all') }}</option>
         {% for v, label in status_options %}
-          <option value="{{ v }}">{{ label }}</option>
+          <option value="{{ v }}" {% if filters.status == v %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-6 d-flex align-items-end justify-content-end gap-2">
+    <div class="col-md-3">
+      <label class="form-label ac-field-label">{{ t('vehicle_list.per_page_label') }}</label>
+      <select class="form-select ac-input" name="per_page">
+        <option value="20" {% if pagination.per_page == 20 %}selected{% endif %}>20</option>
+        <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end justify-content-end gap-2">
       <button class="btn btn-primary">{{ t('vehicle_list.search') }}</button>
-      <button class="btn btn-outline-secondary">{{ t('vehicle_list.reset') }}</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('ui.vehicle_list', lang=lang) }}">
+        {{ t('vehicle_list.reset') }}
+      </a>
       {{ action_button('vehicle','export', t('vehicle_list.export_csv'), '#', 'outline-secondary') }}
       {{ action_button('vehicle','edit', t('vehicle_list.new_vehicle'), url_for('ui.vehicle_new', lang=lang), 'primary') }}
     </div>
+  </form>
+</div>
+
+<form method="post" action="{{ url_for('ui.vehicle_list', lang=lang) }}" id="vehicle-delete-form">
+  <input type="hidden" name="action" value="delete">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+      {% if perms.can('vehicle','edit') %}
+        <button class="btn btn-outline-danger btn-sm" type="submit" id="delete-selected" disabled>
+          {{ t('vehicle_list.delete_selected') }}
+        </button>
+      {% endif %}
+      <span class="ac-text-meta">{{ t('vehicle_list.total') }}: {{ pagination.total }}</span>
+    </div>
   </div>
-</div>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th class="text-center" style="width:32px;">
+            <input class="form-check-input" type="checkbox" id="select-all">
+          </th>
+          <th>{{ t('vehicle_list.brand_model') }}</th>
+          <th>{{ t('vehicle_list.plate_no') }}</th>
+          <th>{{ t('vehicle_list.status') }}</th>
+          <th>{{ t('vehicle_list.actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in vehicles %}
+        <tr>
+          <td class="text-center">
+            <input class="form-check-input row-select" type="checkbox" name="vehicle_ids" value="{{ v.id }}">
+          </td>
+          <td class="ac-text-body">
+            {{ (v.brand_jp if lang == 'jp' else v.brand_cn) or '-' }}
+            /
+            {{ (v.model_jp if lang == 'jp' else v.model_cn) or '-' }}
+          </td>
+          <td class="ac-text-body">{{ v.masked_plate_no }}</td>
+          <td class="ac-text-body">{{ v.status }}</td>
+          <td>
+            <a class="btn btn-link btn-sm" href="{{ url_for('ui.vehicle_detail', vehicle_id=v.id, lang=lang) }}">
+              {{ t('vehicle_list.view') }}
+            </a>
+            {{ action_button('vehicle','edit', t('vehicle_list.edit'), url_for('ui.vehicle_edit', vehicle_id=v.id, lang=lang), 'link') }}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-muted">{{ t('vehicle_list.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
 
-<div class="table-responsive">
-  <table class="table table-sm align-middle">
-    <thead>
-      <tr>
-        <th>{{ t('vehicle_list.brand_model') }}</th>
-        <th>{{ t('vehicle_list.plate_no') }}</th>
-        <th>{{ t('vehicle_list.status') }}</th>
-        <th>{{ t('vehicle_list.actions') }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for v in vehicles %}
-      <tr>
-        <td class="ac-text-body">{{ v.brand_jp }} / {{ v.model_jp }}</td>
-        <td class="ac-text-body">{{ v.masked_plate_no }}</td>
-        <td class="ac-text-body">{{ v.status }}</td>
-        <td>
-          <a class="btn btn-link btn-sm" href="{{ url_for('ui.vehicle_detail', vehicle_id=v.id, lang=lang) }}">
-            {{ t('vehicle_list.view') }}
-          </a>
-          {{ action_button('vehicle','edit', t('vehicle_list.edit'), url_for('ui.vehicle_edit', vehicle_id=v.id, lang=lang), 'link') }}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="ac-text-meta">
+    {{ t('vehicle_list.page_label') }} {{ pagination.page }} / {{ pagination.total_pages }}
+  </span>
+  <ul class="pagination mb-0">
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link"
+         href="{{ url_for('ui.vehicle_list', lang=lang, page=pagination.page-1, per_page=pagination.per_page, brand=filters.brand, status=filters.status) }}">
+        {{ t('vehicle_list.prev') }}
+      </a>
+    </li>
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link"
+         href="{{ url_for('ui.vehicle_list', lang=lang, page=pagination.page+1, per_page=pagination.per_page, brand=filters.brand, status=filters.status) }}">
+        {{ t('vehicle_list.next') }}
+      </a>
+    </li>
+  </ul>
+</nav>
 
-<p class="ac-text-meta">{{ t('vehicle_list.total') }}: {{ pagination.total }}</p>
+<script>
+  const selectAll = document.getElementById('select-all');
+  const deleteButton = document.getElementById('delete-selected');
+  const rows = Array.from(document.querySelectorAll('.row-select'));
+  const deleteForm = document.getElementById('vehicle-delete-form');
+
+  function updateDeleteState() {
+    const anyChecked = rows.some((checkbox) => checkbox.checked);
+    if (deleteButton) {
+      deleteButton.disabled = !anyChecked;
+    }
+    if (selectAll) {
+      const allChecked = rows.length > 0 && rows.every((checkbox) => checkbox.checked);
+      selectAll.checked = allChecked;
+      selectAll.indeterminate = !allChecked && anyChecked;
+    }
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', (event) => {
+      rows.forEach((checkbox) => {
+        checkbox.checked = event.target.checked;
+      });
+      updateDeleteState();
+    });
+  }
+
+  rows.forEach((checkbox) => {
+    checkbox.addEventListener('change', updateDeleteState);
+  });
+
+  if (deleteForm) {
+    deleteForm.addEventListener('submit', (event) => {
+      if (!confirm("{{ t('vehicle_list.confirm_delete') }}")) {
+        event.preventDefault();
+      }
+    });
+  }
+
+  updateDeleteState();
+</script>
 {% endblock %}
