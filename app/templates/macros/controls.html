@@ -62,6 +62,7 @@
         {% for option in options %}
           {% set is_selected = option.value|string == value|string %}
           <option value="{{ option.value }}"
+                  {% if option.brand_id is defined %}data-brand-id="{{ option.brand_id }}"{% endif %}
                   {% if not option.is_active and not is_selected %}disabled{% endif %}
                   {% if is_selected %}selected{% endif %}>
             {{ option.label }}{% if not option.is_active and is_selected %} {{ t('vehicle_edit.inactive_label') }}{% endif %}

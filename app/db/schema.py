@@ -89,6 +89,20 @@ def _create_tables():
         """
     )
 
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS vehicle_qr (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vehicle_id INT NOT NULL,
+            qr_slug VARCHAR(64) NOT NULL UNIQUE,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_vehicle_qr_vehicle_id (vehicle_id),
+            CONSTRAINT fk_vehicle_qr_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
 
 def _seed_roles():
     roles = [

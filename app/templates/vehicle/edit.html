@@ -19,6 +19,21 @@
     {% endfor %}
   </div>
 
+  <div class="row g-3 mt-3">
+    <div class="col-12">
+      <h5 class="mb-2">{{ t('vehicle_status.section_title') }}</h5>
+    </div>
+    {% for field in status_fields %}
+      <div class="col-md-4">
+        {% if field.type == 'select' %}
+          {{ select_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], master_data[field.options_key]) }}
+        {% else %}
+          {{ input_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], field.type) }}
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
   <div class="row g-3 mt-2">
     {% if field_perm.can_view('vehicle', 'legal_doc') %}
       <div class="col-12">
@@ -157,6 +172,38 @@
     field.dataset.initialValue = field.value || '';
   });
   updateDirtyState();
+
+  const brandSelect = form.querySelector('select[name="brand_id"]');
+  const modelSelect = form.querySelector('select[name="model_id"]');
+
+  function filterModels() {
+    if (!brandSelect || !modelSelect) {
+      return;
+    }
+    const selectedBrand = brandSelect.value;
+    const options = Array.from(modelSelect.querySelectorAll('option'));
+    let hasSelected = false;
+    options.forEach((option) => {
+      if (!option.value) {
+        option.hidden = false;
+        return;
+      }
+      const brandId = option.dataset.brandId;
+      const matches = !selectedBrand || brandId === selectedBrand;
+      option.hidden = !matches;
+      if (matches && option.selected) {
+        hasSelected = true;
+      }
+    });
+    if (!hasSelected && selectedBrand) {
+      modelSelect.value = '';
+    }
+  }
+
+  if (brandSelect) {
+    brandSelect.addEventListener('change', filterModels);
+  }
+  filterModels();
 
   function updateDirtyState() {
     formFields.forEach((field) => {

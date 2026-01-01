@@ -20,9 +20,11 @@
 
     <div class="mt-2 d-flex gap-2">
       {{ action_button('vehicle','edit', t('vehicle_detail.edit'), url_for('ui.vehicle_edit', vehicle_id=vehicle.id, lang=lang)) }}
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('qr.qr_public', qr_slug='abc123', lang=lang) }}">
-        {{ t('vehicle_detail.qr_demo') }}
-      </a>
+      {% if qr_slug %}
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('qr.qr_public', qr_slug=qr_slug, lang=lang) }}">
+          {{ t('vehicle_detail.qr_demo') }}
+        </a>
+      {% endif %}
     </div>
   </div>
 

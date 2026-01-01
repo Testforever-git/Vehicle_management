@@ -103,9 +103,11 @@ def list_vehicles(filters=None, page=1, per_page=20):
     if _vehicle_status_available():
         base_sql = f"FROM {table_name} v LEFT JOIN vehicle_status vs ON vs.vehicle_id = v.id"
         status_select = "vs.status"
+        fuel_select = "vs.fuel_level"
     else:
         base_sql = f"FROM {table_name} v"
         status_select = "NULL AS status"
+        fuel_select = "NULL AS fuel_level"
 
     where_clauses = []
     params = []
@@ -134,13 +136,15 @@ def list_vehicles(filters=None, page=1, per_page=20):
           v.id, v.plate_no, v.vin, v.type_designation_code,
           v.garage_name, v.garage_address_jp, v.purchase_price,
           v.brand_cn, v.brand_jp, v.model_cn, v.model_jp, v.color_cn, v.color_jp,
-          {status_select}
+          {status_select},
+          {fuel_select}
         """
     else:
         select_fields = f"""
           v.id, v.plate_no, v.vin, v.type_designation_code,
           v.garage_name, v.garage_address_jp, v.purchase_price,
-          {status_select}
+          {status_select},
+          {fuel_select}
         """
     sql = f"""
     SELECT {select_fields}
@@ -196,6 +200,29 @@ def get_status(vehicle_id: int):
     WHERE vehicle_id = %s
     """
     return fetch_one(sql, (vehicle_id,))
+
+
+def upsert_status(vehicle_id: int, payload: dict):
+    if not _vehicle_status_available():
+        return 0
+    fields = ["status", "mileage", "fuel_level", "location_desc", "update_time", "update_source"]
+    columns = []
+    values = []
+    for field in fields:
+        if field in payload:
+            columns.append(field)
+            values.append(payload[field])
+    if not columns:
+        return 0
+    columns_sql = ", ".join(["vehicle_id"] + columns)
+    placeholders = ", ".join(["%s"] * (len(columns) + 1))
+    updates = ", ".join([f"{field} = VALUES({field})" for field in columns])
+    sql = f"""
+    INSERT INTO vehicle_status ({columns_sql})
+    VALUES ({placeholders})
+    ON DUPLICATE KEY UPDATE {updates}
+    """
+    return execute(sql, tuple([vehicle_id] + values))
 
 def update_vehicle(vehicle_id: int, payload: dict):
     fields = [c for c in _available_columns() if c != "id"]

@@ -17,6 +17,7 @@ from ...repositories.vehicle_repo import (
     update_vehicle,
     create_vehicle,
     delete_vehicles,
+    upsert_status,
 )
 from ...repositories.master_data_repo import (
     list_brands,
@@ -31,6 +32,7 @@ from ...repositories.vehicle_media_repo import (
     update_vehicle_media_paths,
 )
 from ...repositories.vehicle_log_repo import log_vehicle_action
+from ...repositories.qr_repo import ensure_vehicle_qr, get_vehicle_qr_by_vehicle_id
 
 def _require_login():
     u = get_current_user()
@@ -65,7 +67,6 @@ VEHICLE_FIELDS = [
     {"name": "garage_lng", "label_key": "vehicle_edit.fields.garage_lng", "type": "text"},
     {"name": "purchase_date", "label_key": "vehicle_edit.fields.purchase_date", "type": "date"},
     {"name": "purchase_price", "label_key": "vehicle_edit.fields.purchase_price", "type": "number"},
-    {"name": "ext_json", "label_key": "vehicle_edit.fields.ext_json", "type": "textarea"},
     {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
 ]
 
@@ -84,7 +85,7 @@ NULLABLE_NUMERIC_FIELDS = {
 }
 
 NULLABLE_TEXT_FIELDS = {
-    "ext_json",
+    "note",
 }
 
 PHOTO_FILE_TYPE = "photo"
@@ -155,6 +156,29 @@ def _payload_from_form():
     return payload
 
 
+STATUS_FIELDS = [
+    {"name": "status", "label_key": "vehicle_status.fields.status", "type": "select", "options_key": "status_options"},
+    {"name": "mileage", "label_key": "vehicle_status.fields.mileage", "type": "number"},
+    {"name": "fuel_level", "label_key": "vehicle_status.fields.fuel_level", "type": "number"},
+    {"name": "location_desc", "label_key": "vehicle_status.fields.location_desc", "type": "text"},
+]
+
+
+def _status_payload_from_form():
+    payload = {}
+    for field in STATUS_FIELDS:
+        name = field["name"]
+        if name in request.form:
+            value = request.form.get(name)
+            if isinstance(value, str):
+                value = value.strip()
+            if value == "" and field.get("type") in {"number"}:
+                payload[name] = None
+            else:
+                payload[name] = value
+    return payload
+
+
 def _load_master_data():
     brands = list_brands()
     models = list_models()
@@ -180,6 +204,7 @@ def _load_master_data():
                 "value": row["id"],
                 "label": f"{brand_label} - {model_label}",
                 "is_active": bool(row.get("is_active", 1)),
+                "brand_id": row["brand_id"],
             }
         )
 
@@ -208,6 +233,11 @@ def _load_master_data():
         "engine_layout": enum_groups.get("engine_layout", []),
         "fuel_type": enum_groups.get("fuel_type", []),
         "drive_type": enum_groups.get("drive_type", []),
+        "status_options": [
+            {"value": "available", "label": "available", "is_active": True},
+            {"value": "rented", "label": "rented", "is_active": True},
+            {"value": "maintenance", "label": "maintenance", "is_active": True},
+        ],
     }
 
 
@@ -349,6 +379,7 @@ def vehicle_detail(vehicle_id: int):
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
     vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
+    qr_row = get_vehicle_qr_by_vehicle_id(vehicle_id)
 
     return render_template(
         "vehicle/detail.html",
@@ -358,6 +389,7 @@ def vehicle_detail(vehicle_id: int):
         recent_logs=[],
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
+        qr_slug=qr_row["qr_slug"] if qr_row else None,
     )
 
 @bp.route("/vehicle/<int:vehicle_id>/edit", methods=["GET","POST"])
@@ -371,6 +403,7 @@ def vehicle_edit(vehicle_id: int):
 
     if request.method == "POST":
         payload = _payload_from_form()
+        status_payload = _status_payload_from_form()
         vin = (payload.get("vin") or vehicle.get("vin") or "").strip()
         if not vin:
             flash(_t("vehicle_edit.messages.vin_required"), "warning")
@@ -432,6 +465,10 @@ def vehicle_edit(vehicle_id: int):
 
         payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
+        ensure_vehicle_qr(vehicle_id)
+        if status_payload:
+            status_payload["update_source"] = "manual"
+            upsert_status(vehicle_id, status_payload)
         log_vehicle_action(
             vehicle_id,
             actor=get_current_user().username,
@@ -449,6 +486,7 @@ def vehicle_edit(vehicle_id: int):
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
     vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
+    status = get_status(vehicle_id) or {}
     master_data = _load_master_data()
 
     return render_template(
@@ -456,6 +494,8 @@ def vehicle_edit(vehicle_id: int):
         active_menu="vehicle",
         vehicle=vehicle,
         vehicle_fields=VEHICLE_FIELDS,
+        status_fields=STATUS_FIELDS,
+        status_data=status,
         master_data=master_data,
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
@@ -481,6 +521,7 @@ def vehicle_new():
 
     if request.method == "POST":
         payload = _payload_from_form()
+        status_payload = _status_payload_from_form()
         vin = (payload.get("vin") or "").strip()
         if not vin:
             flash(_t("vehicle_edit.messages.vin_required"), "warning")
@@ -497,6 +538,10 @@ def vehicle_new():
         create_vehicle(payload)
         created = get_vehicle_by_vin(vin)
         if created:
+            ensure_vehicle_qr(created["id"])
+            if status_payload:
+                status_payload["update_source"] = "manual"
+                upsert_status(created["id"], status_payload)
             create_vehicle_media(
                 created["id"],
                 "legal_doc",
@@ -524,6 +569,8 @@ def vehicle_new():
         active_menu="vehicle",
         vehicle=vehicle,
         vehicle_fields=VEHICLE_FIELDS,
+        status_fields=STATUS_FIELDS,
+        status_data={},
         master_data=_load_master_data(),
         legal_docs=[],
         vehicle_photos=[],
