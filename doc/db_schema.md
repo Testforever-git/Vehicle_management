@@ -168,10 +168,9 @@ vehicle_field_permission | CREATE TABLE `vehicle_field_permission` (
 
 vehicle_field_permission（字段级权限表）
 一条记录代表：某角色（role_id）对某表某字段的访问级别
-权限判定只依赖 access_level（无额外布尔字段）
+
 
 access_level 定义（INT）
-0：DENY（不可见）
 10：VIEW（可见但只读）
 20：EDIT（可编辑）
 
@@ -180,10 +179,10 @@ access_level 定义（INT）
 可编辑：access_level >= 20
 
 UI 控制:
-< 10：字段显示为 ***
-10-19：显示但禁用编辑（readonly/disabled）
->= 20：可编辑
+admin角色不需要配置，默认对所有用户所有表所有字段有可见和编辑权限。 无需也无法通过UI设置降低权限。
+其他角色默认对业务表的所有表和所有字段都没有可见和编辑权限。 即无需通过UI设置为不可见。 UI上仅需要配置可见/可编辑。 如果配置为不可见，则代表删除这条记录，回到默认状态。
 
+表格联动:
 考虑到每次增加/删除/改动字段时，vehicle_field_permission也需要联动修改。
 UI上设置字段权限时，table_name/field_name从 field_catalog表格读取，role name从role表获取。 均为下拉框选择。 table_name没有选中的时候，field_name为空。
 
