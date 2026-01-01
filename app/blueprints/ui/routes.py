@@ -30,6 +30,7 @@ from ...repositories.vehicle_media_repo import (
     create_vehicle_media,
     delete_vehicle_media,
     update_vehicle_media_paths,
+    set_primary_vehicle_media,
 )
 from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...repositories.qr_repo import ensure_vehicle_qr, get_vehicle_qr_by_vehicle_id
@@ -255,6 +256,57 @@ def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]
 def _media_filenames(rows: list[dict]) -> list[str]:
     return [os.path.basename(row.get("file_path", "")) for row in rows if row.get("file_path")]
 
+
+def _media_items(rows: list[dict]) -> list[dict]:
+    items = []
+    for row in rows:
+        file_path = row.get("file_path")
+        if not file_path:
+            continue
+        items.append(
+            {
+                "filename": os.path.basename(file_path),
+                "is_primary": bool(row.get("is_primary")) if "is_primary" in row else False,
+                "file_path": file_path,
+            }
+        )
+    return items
+
+
+def _select_cover_filename(rows: list[dict]) -> str | None:
+    for row in rows:
+        if row.get("is_primary"):
+            return os.path.basename(row.get("file_path", ""))
+    if rows:
+        return os.path.basename(rows[0].get("file_path", ""))
+    return None
+
+
+def _select_cover_path(rows: list[dict]) -> str | None:
+    for row in rows:
+        if row.get("is_primary"):
+            return row.get("file_path")
+    if rows:
+        return rows[0].get("file_path")
+    return None
+
+
+def _build_public_vehicle_card(vehicle_row: dict) -> dict:
+    vehicle_id = vehicle_row["id"]
+    photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
+    cover_filename = _select_cover_filename(photo_rows)
+    status = get_status(vehicle_id) or {}
+    return {
+        "id": vehicle_id,
+        "vin": vehicle_row.get("vin"),
+        "brand_cn": vehicle_row.get("brand_cn"),
+        "brand_jp": vehicle_row.get("brand_jp"),
+        "model_cn": vehicle_row.get("model_cn"),
+        "model_jp": vehicle_row.get("model_jp"),
+        "mileage": status.get("mileage"),
+        "cover_filename": cover_filename,
+    }
+
 def _t(key: str) -> str:
     lang = request.args.get("lang") or session.get("lang") or "jp"
     return _translator.t(lang, key)
@@ -264,6 +316,27 @@ def _t(key: str) -> str:
 def vehicle_image(vin: str, category: str, filename: str):
     if not _require_login():
         return redirect(url_for("auth.login"))
+    if category not in {"legal_doc", PHOTO_DIR_CATEGORY, LEGACY_PHOTO_DIR_CATEGORY}:
+        abort(404)
+    safe_vin = _safe_vin(vin)
+    base_dir = _image_base_dir()
+    if category == "legal_doc":
+        dir_path = os.path.join(base_dir, safe_vin, category)
+    else:
+        candidate_dirs = [
+            os.path.join(base_dir, safe_vin, PHOTO_DIR_CATEGORY),
+            os.path.join(base_dir, safe_vin, LEGACY_PHOTO_DIR_CATEGORY),
+        ]
+        dir_path = candidate_dirs[0]
+        for candidate in candidate_dirs:
+            if os.path.exists(os.path.join(candidate, filename)):
+                dir_path = candidate
+                break
+    return send_from_directory(dir_path, filename)
+
+
+@bp.get("/portal/vehicle/image/<vin>/<category>/<filename>")
+def portal_vehicle_image(vin: str, category: str, filename: str):
     if category not in {"legal_doc", PHOTO_DIR_CATEGORY, LEGACY_PHOTO_DIR_CATEGORY}:
         abort(404)
     safe_vin = _safe_vin(vin)
@@ -292,6 +365,47 @@ def dashboard():
         return redirect(url_for("auth.login"))
     _, total = list_vehicles()
     return render_template("dashboard.html", active_menu="dashboard", total=total)
+
+
+@bp.get("/portal")
+def portal_home():
+    return render_template("portal/home.html", active_menu="portal")
+
+
+@bp.get("/portal/repair")
+def portal_repair():
+    return render_template("portal/repair.html", active_menu="portal")
+
+
+@bp.get("/portal/trade")
+def portal_trade():
+    return render_template("portal/trade.html", active_menu="portal")
+
+
+@bp.get("/portal/rentals")
+def portal_rentals():
+    vehicles, _ = list_vehicles(page=1, per_page=500)
+    cards = [_build_public_vehicle_card(row) for row in vehicles]
+    return render_template("portal/rentals.html", active_menu="portal", vehicles=cards)
+
+
+@bp.get("/portal/rentals/<int:vehicle_id>")
+def portal_rental_detail(vehicle_id: int):
+    vehicle = get_vehicle_i18n(vehicle_id)
+    if not vehicle:
+        abort(404)
+    status = get_status(vehicle_id) or {}
+    photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
+    cover_filename = _select_cover_filename(photo_rows)
+    photo_items = _media_items(photo_rows)
+    return render_template(
+        "portal/rental_detail.html",
+        active_menu="portal",
+        vehicle=vehicle,
+        status=status,
+        cover_filename=cover_filename,
+        vehicle_photos=photo_items,
+    )
 
 @bp.route("/vehicle/list", methods=["GET", "POST"])
 def vehicle_list():
@@ -462,6 +576,15 @@ def vehicle_edit(vehicle_id: int):
             _media_rel_paths(vin, PHOTO_DIR_CATEGORY, new_photos),
             get_current_user().user_id,
         )
+        primary_photo = (request.form.get("primary_vehicle_photo") or "").strip()
+        if primary_photo:
+            photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
+            primary_row = next(
+                (row for row in photo_rows if os.path.basename(row.get("file_path", "")) == primary_photo),
+                None,
+            )
+            if primary_row:
+                set_primary_vehicle_media(vehicle_id, PHOTO_FILE_TYPE, primary_row["file_path"])
 
         payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
@@ -485,7 +608,9 @@ def vehicle_edit(vehicle_id: int):
         return redirect(url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
-    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
+    photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
+    vehicle_photos = _media_items(photo_rows)
+    has_primary_photo = any(item["is_primary"] for item in vehicle_photos)
     status = get_status(vehicle_id) or {}
     master_data = _load_master_data()
 
@@ -499,6 +624,7 @@ def vehicle_edit(vehicle_id: int):
         master_data=master_data,
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
+        has_primary_photo=has_primary_photo,
         form_action=url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")),
         cancel_url=url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")),
         is_new=False,
@@ -574,6 +700,7 @@ def vehicle_new():
         master_data=_load_master_data(),
         legal_docs=[],
         vehicle_photos=[],
+        has_primary_photo=False,
         form_action=url_for("ui.vehicle_new", lang=request.args.get("lang")),
         cancel_url=url_for("ui.vehicle_list", lang=request.args.get("lang")),
         is_new=True,

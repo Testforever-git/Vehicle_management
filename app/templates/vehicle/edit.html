@@ -64,11 +64,18 @@
           <input class="form-control" type="file" name="vehicle_photo_files" id="vehicle-photo-input" multiple accept="image/*">
         {% endif %}
         <input type="hidden" name="remove_vehicle_photos" id="remove-vehicle-photos">
+        <input type="hidden" name="primary_vehicle_photo" id="primary-vehicle-photo" value="">
         <div class="d-flex flex-wrap gap-2 mt-2" id="vehicle-photo-thumbs">
-          {% for filename in vehicle_photos %}
-            <div class="thumb-item" data-filename="{{ filename }}">
-              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=filename) }}" class="thumb-link">
-                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=filename) }}" alt="{{ filename }}">
+          {% for photo in vehicle_photos %}
+            {% set is_primary = photo.is_primary %}
+            <div class="thumb-item {% if is_primary or (not has_primary_photo and loop.first) %}is-primary{% endif %}" data-filename="{{ photo.filename }}" data-is-primary="{{ 1 if is_primary else 0 }}">
+              <button type="button" class="thumb-primary" aria-label="{{ t('vehicle_edit.set_primary') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2.4l2.9 5.88 6.49.95-4.69 4.57 1.11 6.47L12 17.9l-5.81 3.37 1.11-6.47-4.69-4.57 6.49-.95L12 2.4z"/>
+                </svg>
+              </button>
+              <a href="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=photo.filename) }}" class="thumb-link">
+                <img src="{{ url_for('ui.vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=photo.filename) }}" alt="{{ photo.filename }}">
               </a>
               {% if field_perm.can_edit('vehicle', 'vehicle_photo') %}
                 <button type="button" class="thumb-remove" data-target="photo" aria-label="{{ t('vehicle_edit.remove') }}">×</button>
@@ -100,6 +107,32 @@
   .thumb-item img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; }
   .thumb-item.is-new img { border: 2px solid #28a745; }
   .thumb-item.is-removed img { border: 2px solid #dc3545; opacity: 0.55; }
+  .thumb-item.is-primary img { border: 2px solid #f4c542; }
+  .thumb-primary {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    width: 22px;
+    height: 22px;
+    border: 1px solid #f4c542;
+    border-radius: 50%;
+    background: #fff;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .thumb-primary svg {
+    width: 14px;
+    height: 14px;
+    fill: transparent;
+    stroke: #f4c542;
+    stroke-width: 1.6;
+  }
+  .thumb-item.is-primary .thumb-primary svg {
+    fill: #f4c542;
+  }
   .thumb-remove {
     position: absolute;
     top: -6px;
@@ -244,8 +277,17 @@
 
   const removeLegalInput = document.getElementById('remove-legal-docs');
   const removePhotoInput = document.getElementById('remove-vehicle-photos');
+  const primaryPhotoInput = document.getElementById('primary-vehicle-photo');
   const initialLegalThumbs = document.getElementById('legal-doc-thumbs')?.innerHTML || '';
   const initialPhotoThumbs = document.getElementById('vehicle-photo-thumbs')?.innerHTML || '';
+  const hasPrimaryPhoto = {{ 'true' if has_primary_photo else 'false' }};
+
+  if (primaryPhotoInput && hasPrimaryPhoto) {
+    const initialPrimary = document.querySelector('#vehicle-photo-thumbs .thumb-item[data-is-primary="1"]')?.dataset.filename;
+    if (initialPrimary) {
+      primaryPhotoInput.value = initialPrimary;
+    }
+  }
 
   function updateRemoveList(input, name) {
     const existing = input.value ? input.value.split(',') : [];
@@ -271,6 +313,9 @@
       const filename = item.dataset.filename;
       if (filename) {
         updateRemoveList(hiddenInput, filename);
+        if (primaryPhotoInput && primaryPhotoInput.value === filename) {
+          primaryPhotoInput.value = '';
+        }
       }
       item.classList.add('is-removed');
       const removeBtn = item.querySelector('.thumb-remove');
@@ -284,11 +329,51 @@
   setupRemoveButtons('legal-doc-thumbs', removeLegalInput);
   setupRemoveButtons('vehicle-photo-thumbs', removePhotoInput);
 
+  function syncPrimarySelection(filename) {
+    if (!primaryPhotoInput) {
+      return;
+    }
+    const thumbs = Array.from(document.querySelectorAll('#vehicle-photo-thumbs .thumb-item'));
+    thumbs.forEach((thumb) => {
+      thumb.classList.toggle('is-primary', thumb.dataset.filename === filename);
+    });
+    primaryPhotoInput.value = filename;
+  }
+
+  document.getElementById('vehicle-photo-thumbs')?.addEventListener('click', (event) => {
+    const primaryButton = event.target.closest('.thumb-primary');
+    if (!primaryButton) {
+      return;
+    }
+    const item = primaryButton.closest('.thumb-item');
+    if (!item || item.classList.contains('is-removed')) {
+      return;
+    }
+    const filename = item.dataset.filename;
+    if (filename) {
+      syncPrimarySelection(filename);
+      isDirty = true;
+    }
+  });
+
   function buildPreview(file, container, onRemove) {
     const reader = new FileReader();
     reader.onload = (e) => {
       const wrapper = document.createElement('div');
       wrapper.className = 'thumb-item is-new';
+      wrapper.dataset.filename = file.name;
+      const primaryBtn = document.createElement('button');
+      primaryBtn.type = 'button';
+      primaryBtn.className = 'thumb-primary';
+      primaryBtn.setAttribute('aria-label', '{{ t("vehicle_edit.set_primary") }}');
+      primaryBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.4l2.9 5.88 6.49.95-4.69 4.57 1.11 6.47L12 17.9l-5.81 3.37 1.11-6.47-4.69-4.57 6.49-.95L12 2.4z"/></svg>';
+      primaryBtn.addEventListener('click', () => {
+        if (wrapper.classList.contains('is-removed')) {
+          return;
+        }
+        syncPrimarySelection(file.name);
+        isDirty = true;
+      });
       const link = document.createElement('a');
       link.href = e.target.result;
       link.className = 'thumb-link';
@@ -303,11 +388,15 @@
       removeBtn.addEventListener('click', () => {
         wrapper.classList.add('is-removed');
         removeBtn.disabled = true;
+        if (primaryPhotoInput && primaryPhotoInput.value === file.name) {
+          primaryPhotoInput.value = '';
+        }
         if (onRemove) {
           onRemove();
         }
         isDirty = true;
       });
+      wrapper.appendChild(primaryBtn);
       wrapper.appendChild(link);
       wrapper.appendChild(removeBtn);
       container.appendChild(wrapper);
@@ -419,6 +508,10 @@
     }
     if (photoThumbs) {
       photoThumbs.innerHTML = initialPhotoThumbs;
+    }
+    if (primaryPhotoInput) {
+      const currentPrimary = document.querySelector('#vehicle-photo-thumbs .thumb-item.is-primary')?.dataset.filename || '';
+      primaryPhotoInput.value = currentPrimary;
     }
     fileResetters.forEach((reset) => reset());
     isDirty = false;
