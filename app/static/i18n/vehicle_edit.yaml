@@ -7,6 +7,7 @@ jp:
   save: "保存"
   save_as: "別名で保存"
   remove: "削除"
+  set_primary: "カバーに設定"
   select_placeholder: "選択してください"
   inactive_label: "(無効)"
   fields:
@@ -51,6 +52,7 @@ cn:
   save: "保存"
   save_as: "另存为"
   remove: "删除"
+  set_primary: "设为封面"
   select_placeholder: "请选择"
   inactive_label: "（停用）"
   fields:

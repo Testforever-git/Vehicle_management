@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% set brand_label = (vehicle.brand_jp if lang == 'jp' else vehicle.brand_cn) or '-' %}
+{% set model_label = (vehicle.model_jp if lang == 'jp' else vehicle.model_cn) or '-' %}
+
+{% block page_title %}{{ t('portal.rental_detail_title') }}{% endblock %}
+
+{% block content %}
+<ul class="nav nav-pills mb-4">
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('ui.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('ui.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link active" href="{{ url_for('ui.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="{{ url_for('ui.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
+  </li>
+</ul>
+
+<div class="mb-3">
+  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ui.portal_rentals', lang=lang) }}">
+    {{ t('portal.rental_back') }}
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card p-3">
+      <h5 class="mb-3">{{ t('portal.rental_gallery_title') }}</h5>
+      {% if vehicle_photos %}
+        {% set initial_photo = cover_filename or vehicle_photos[0].filename %}
+        <div class="mb-3">
+          <img id="rental-main-image" class="img-fluid rounded"
+               src="{{ url_for('ui.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=initial_photo) }}"
+               alt="{{ brand_label }} {{ model_label }}">
+        </div>
+        <div class="d-flex flex-wrap gap-2" id="rental-photo-thumbs">
+          {% for photo in vehicle_photos %}
+            <button type="button" class="btn p-0 border-0 rental-thumb" data-filename="{{ photo.filename }}">
+              <img class="rounded" style="width: 96px; height: 72px; object-fit: cover;"
+                   src="{{ url_for('ui.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename=photo.filename) }}"
+                   alt="{{ photo.filename }}">
+            </button>
+          {% endfor %}
+        </div>
+        <p class="text-muted small mt-2 mb-0">{{ t('portal.rental_thumbnail_hint') }}</p>
+      {% else %}
+        <div class="alert alert-secondary mb-0">{{ t('portal.rental_no_photos') }}</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card p-3 mb-3">
+      <h5 class="mb-2">{{ brand_label }} / {{ model_label }}</h5>
+      <div class="text-muted">{{ t('portal.rentals_mileage') }}: {{ status.mileage if status.mileage is not none else '-' }} km</div>
+    </div>
+    <div class="card p-3">
+      <h5 class="mb-2">{{ t('portal.rental_description_title') }}</h5>
+      {% if vehicle.note %}
+        <p class="mb-0">{{ vehicle.note }}</p>
+      {% else %}
+        <p class="text-muted mb-0">{{ t('portal.rental_description_empty') }}</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+  const mainImage = document.getElementById('rental-main-image');
+  document.getElementById('rental-photo-thumbs')?.addEventListener('click', (event) => {
+    const button = event.target.closest('.rental-thumb');
+    if (!button || !mainImage) {
+      return;
+    }
+    const filename = button.dataset.filename;
+    if (!filename) {
+      return;
+    }
+    mainImage.src = "{{ url_for('ui.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename='__PLACEHOLDER__') }}".replace('__PLACEHOLDER__', filename);
+  });
+</script>
+{% endblock %}
