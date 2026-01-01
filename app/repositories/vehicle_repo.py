@@ -205,7 +205,7 @@ def get_status(vehicle_id: int):
 def upsert_status(vehicle_id: int, payload: dict):
     if not _vehicle_status_available():
         return 0
-    fields = ["status", "mileage", "fuel_level", "location_desc", "update_time", "update_source"]
+    fields = ["status", "mileage", "fuel_level", "location_desc", "update_time", "update_by"]
     columns = []
     values = []
     for field in fields:

@@ -467,7 +467,7 @@ def vehicle_edit(vehicle_id: int):
         update_vehicle(vehicle_id, payload)
         ensure_vehicle_qr(vehicle_id)
         if status_payload:
-            status_payload["update_source"] = "manual"
+            status_payload["update_by"] = get_current_user().user_id
             upsert_status(vehicle_id, status_payload)
         log_vehicle_action(
             vehicle_id,
@@ -540,7 +540,7 @@ def vehicle_new():
         if created:
             ensure_vehicle_qr(created["id"])
             if status_payload:
-                status_payload["update_source"] = "manual"
+                status_payload["update_by"] = get_current_user().user_id
                 upsert_status(created["id"], status_payload)
             create_vehicle_media(
                 created["id"],
