@@ -25,25 +25,23 @@
 - UNIQUE(vin)
 
 ### Fields (summary)
-| Table   | Create Table                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| vehicle | CREATE TABLE `vehicle` (
+ vehicle | CREATE TABLE `vehicle` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `brand_jp` varchar(64) DEFAULT NULL,
-  `model_cn` varchar(64) DEFAULT NULL,
-  `model_jp` varchar(64) DEFAULT NULL,
-  `color_cn` varchar(32) DEFAULT NULL,
-  `color_jp` varchar(32) DEFAULT NULL,
-  `model_year` smallint unsigned DEFAULT NULL,
+  `brand_id` int NOT NULL,
+  `model_id` int NOT NULL,
+  `color_id` int DEFAULT NULL,
+  `model_year_ad` smallint unsigned DEFAULT NULL COMMENT 'Gregorian year, e.g. 2021',
+  `model_year_era` varchar(16) DEFAULT NULL COMMENT 'showa/heisei/reiwa',
+  `model_year_era_year` smallint unsigned DEFAULT NULL COMMENT 'e.g. reiwa 3 -> 3',
   `plate_no` varchar(64) DEFAULT NULL,
-  `brand_cn` varchar(64) DEFAULT NULL,
   `vin` varchar(64) NOT NULL,
   `type_designation_code` varchar(64) DEFAULT NULL,
   `classification_number` varchar(32) DEFAULT NULL,
   `engine_code` varchar(32) DEFAULT NULL,
-  `engine_layout` varchar(32) DEFAULT NULL,
+  `engine_layout_code` varchar(32) DEFAULT NULL,
   `displacement_cc` int unsigned DEFAULT NULL,
-  `fuel_type` varchar(32) DEFAULT NULL,
-  `drive_type` varchar(32) DEFAULT NULL,
+  `fuel_type_code` varchar(32) DEFAULT NULL,
+  `drive_type_code` varchar(32) DEFAULT NULL,
   `transmission` varchar(32) DEFAULT NULL,
   `ownership_type` varchar(32) DEFAULT NULL,
   `owner_id` bigint unsigned DEFAULT NULL,
@@ -67,8 +65,87 @@
   UNIQUE KEY `uk_vehicle_vin` (`vin`),
   KEY `idx_vehicle_plate_no` (`plate_no`),
   KEY `fk_vehicle_updated_by` (`updated_by`),
-  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
+  KEY `idx_vehicle_brand_id` (`brand_id`),
+  KEY `idx_vehicle_model_id` (`model_id`),
+  KEY `idx_vehicle_color_id` (`color_id`),
+  CONSTRAINT `fk_vehicle_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`),
+  CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
+  CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `chk_model_year_era_year` CHECK (((`model_year_era_year` is null) or (`model_year_era_year` between 1 and 99)))
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+2.1 Master Data（主数据/字典）规则
+md_brand（品牌）
+brand_code 为稳定代码（小写、无空格，如 tesla）
+name_jp/name_cn 用于 UI 显示
+停用品牌：is_active=0（不删除，以免历史数据失效）
+
+md_model（车型）
+(brand_id, model_code) 唯一
+车型必须属于一个品牌（FK）
+停用车型：is_active=0
+md_color（颜色）
+color_code 为稳定代码（如 white/black/silver）
+
+停用颜色：is_active=0
+md_enum（枚举字典）
+enum_type 限定取值：engine_layout / fuel_type / drive_type
+enum_code 为稳定代码（如 bev/awd/FF）
+UI 显示使用 name_jp/name_cn
+
+业务表不存多语言文本，只存 id/code，所有多语言通过 join 获取。
+
+2.2 vehicle（车辆）规则
+存储规则
+brand_id：FK -> md_brand.id
+model_id：FK -> md_model.id
+color_id：FK -> md_color.id（可为空）
+engine_layout_code：引用 md_enum(enum_type='engine_layout')
+fuel_type_code：引用 md_enum(enum_type='fuel_type')
+drive_type_code：引用 md_enum(enum_type='drive_type')
+
+2.3 年份规则
+model_year_ad：公历年份（统计/排序用）
+model_year_era：年号（showa/heisei/reiwa）
+model_year_era_year：年号年（1~99）
+录入可只填其中一套，推荐录入时：输入和历则自动换算并写入 model_year_ad
+
+2.4 查询显示（中日双语）
+显示品牌：join md_brand
+显示车型：join md_model
+显示颜色：join md_color
+显示枚举：join md_enum（按 enum_type + code）
+
+2.5 查询视图（减少开发重复join）
+创建一个 view：把常用中日文一次性 join 出来：
+CREATE OR REPLACE VIEW v_vehicle_i18n AS
+SELECT
+  v.*,
+  b.brand_code,
+  b.name_jp AS brand_jp,
+  b.name_cn AS brand_cn,
+  m.model_code,
+  m.name_jp AS model_jp,
+  m.name_cn AS model_cn,
+  c.color_code,
+  c.name_jp AS color_jp,
+  c.name_cn AS color_cn,
+  el.name_jp AS engine_layout_jp,
+  el.name_cn AS engine_layout_cn,
+  ft.name_jp AS fuel_type_jp,
+  ft.name_cn AS fuel_type_cn,
+  dt.name_jp AS drive_type_jp,
+  dt.name_cn AS drive_type_cn
+FROM vehicle v
+JOIN md_brand b ON b.id = v.brand_id
+JOIN md_model m ON m.id = v.model_id
+LEFT JOIN md_color c ON c.id = v.color_id
+LEFT JOIN md_enum el ON el.enum_type='engine_layout' AND el.enum_code=v.engine_layout_code AND el.is_active=1
+LEFT JOIN md_enum ft ON ft.enum_type='fuel_type' AND ft.enum_code=v.fuel_type_code AND ft.is_active=1
+LEFT JOIN md_enum dt ON dt.enum_type='drive_type' AND dt.enum_code=v.drive_type_code AND dt.is_active=1;
+
+应用层直接 SELECT * FROM v_vehicle_i18n，无需到处写 join。
 
 
 ## 3. vehicle_status
