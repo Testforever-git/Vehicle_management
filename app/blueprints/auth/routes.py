@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash
 from . import bp
 from ...repositories.user_repo import get_user_by_username
@@ -25,6 +25,9 @@ def login_post():
         flash("invalid credentials", "danger")
         return redirect(url_for("auth.login"))
     login_user(user["id"])
+    next_url = session.pop("next_url", None)
+    if next_url:
+        return redirect(next_url)
     return redirect(url_for("ui.dashboard"))
 
 

@@ -11,7 +11,11 @@
 <div class="container py-4">
   <div class="card p-3 mx-auto" style="max-width:480px;">
     <div class="ac-title-sub">{{ t('qr_public.section_title') }}</div>
-    <div class="mt-2 ac-text-body">{{ vehicle.brand_jp }} / {{ vehicle.model_jp }}</div>
+    <div class="mt-2 ac-text-body">
+      {{ (vehicle.brand_jp if lang == 'jp' else vehicle.brand_cn) or '-' }}
+      /
+      {{ (vehicle.model_jp if lang == 'jp' else vehicle.model_cn) or '-' }}
+    </div>
     <div class="ac-text-body">{{ t('qr_public.status') }}: {{ status.status if status else t('qr_public.unknown') }}</div>
     <div class="ac-text-body">{{ t('qr_public.plate_no') }}: {{ vehicle.masked_plate_no }}</div>
     <div class="ac-text-meta mt-2">{{ t('qr_public.scanned_at') }}: {{ scanned_at }}</div>

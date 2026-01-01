@@ -11,6 +11,24 @@ from ...repositories.field_permission_repo import (
 from ...repositories.role_repo import list_roles
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
 from ...repositories.vehicle_log_repo import log_vehicle_action
+from ...repositories.master_data_repo import (
+    list_brands,
+    list_models,
+    list_colors,
+    list_enums,
+    create_brand,
+    update_brand,
+    deactivate_brand,
+    create_model,
+    update_model,
+    deactivate_model,
+    create_color,
+    update_color,
+    deactivate_color,
+    create_enum,
+    update_enum,
+    deactivate_enum,
+)
 from ...security.users import get_current_user
 from werkzeug.security import generate_password_hash
 
@@ -399,3 +417,90 @@ def update_field_permissions():
     else:
         flash("invalid field permission update", "warning")
     return redirect(url_for("admin.field_permissions"))
+
+
+@bp.get("/dictionaries")
+def dictionaries():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    return render_template(
+        "admin/dictionaries.html",
+        active_menu="admin_dictionaries",
+        brands=list_brands(),
+        models=list_models(),
+        colors=list_colors(),
+        enums=list_enums(),
+    )
+
+
+@bp.post("/dictionaries")
+def dictionary_actions():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    action = request.form.get("action")
+    dict_type = request.form.get("dict_type")
+
+    if dict_type == "brand":
+        brand_code = request.form.get("brand_code", "").strip()
+        name_cn = request.form.get("name_cn", "").strip()
+        name_jp = request.form.get("name_jp", "").strip()
+        is_active = request.form.get("is_active") == "1"
+        if action == "create" and brand_code:
+            create_brand(brand_code, name_cn, name_jp, is_active)
+        elif action == "update":
+            brand_id = int(request.form.get("brand_id", "0") or 0)
+            if brand_id:
+                update_brand(brand_id, brand_code, name_cn, name_jp, is_active)
+        elif action == "delete":
+            brand_id = int(request.form.get("brand_id", "0") or 0)
+            if brand_id:
+                deactivate_brand(brand_id)
+    elif dict_type == "model":
+        model_code = request.form.get("model_code", "").strip()
+        name_cn = request.form.get("name_cn", "").strip()
+        name_jp = request.form.get("name_jp", "").strip()
+        brand_id = int(request.form.get("brand_id", "0") or 0)
+        is_active = request.form.get("is_active") == "1"
+        if action == "create" and model_code and brand_id:
+            create_model(brand_id, model_code, name_cn, name_jp, is_active)
+        elif action == "update":
+            model_id = int(request.form.get("model_id", "0") or 0)
+            if model_id and brand_id:
+                update_model(model_id, brand_id, model_code, name_cn, name_jp, is_active)
+        elif action == "delete":
+            model_id = int(request.form.get("model_id", "0") or 0)
+            if model_id:
+                deactivate_model(model_id)
+    elif dict_type == "color":
+        color_code = request.form.get("color_code", "").strip()
+        name_cn = request.form.get("name_cn", "").strip()
+        name_jp = request.form.get("name_jp", "").strip()
+        is_active = request.form.get("is_active") == "1"
+        if action == "create" and color_code:
+            create_color(color_code, name_cn, name_jp, is_active)
+        elif action == "update":
+            color_id = int(request.form.get("color_id", "0") or 0)
+            if color_id:
+                update_color(color_id, color_code, name_cn, name_jp, is_active)
+        elif action == "delete":
+            color_id = int(request.form.get("color_id", "0") or 0)
+            if color_id:
+                deactivate_color(color_id)
+    elif dict_type == "enum":
+        enum_type = request.form.get("enum_type", "").strip()
+        enum_code = request.form.get("enum_code", "").strip()
+        name_cn = request.form.get("name_cn", "").strip()
+        name_jp = request.form.get("name_jp", "").strip()
+        is_active = request.form.get("is_active") == "1"
+        if action == "create" and enum_type and enum_code:
+            create_enum(enum_type, enum_code, name_cn, name_jp, is_active)
+        elif action == "update":
+            enum_id = int(request.form.get("enum_id", "0") or 0)
+            if enum_id:
+                update_enum(enum_id, enum_type, enum_code, name_cn, name_jp, is_active)
+        elif action == "delete":
+            enum_id = int(request.form.get("enum_id", "0") or 0)
+            if enum_id:
+                deactivate_enum(enum_id)
+
+    return redirect(url_for("admin.dictionaries", lang=request.args.get("lang")))

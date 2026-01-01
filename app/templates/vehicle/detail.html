@@ -2,15 +2,17 @@
 {% from 'macros/controls.html' import display_field with context %}
 {% from 'macros/buttons.html' import action_button with context %}
 
-{% block page_title %}{{ vehicle.brand_jp }} / {{ vehicle.model_jp }}{% endblock %}
+{% set brand_label = (vehicle.brand_jp if lang == 'jp' else vehicle.brand_cn) or '-' %}
+{% set model_label = (vehicle.model_jp if lang == 'jp' else vehicle.model_cn) or '-' %}
+{% block page_title %}{{ brand_label }} / {{ model_label }}{% endblock %}
 
 {% block content %}
 <div class="row g-3">
   <div class="col-md-5">
     <div class="card p-3">
       <div class="ac-title-sub">{{ t('vehicle_detail.section_basic') }}</div>
-      {{ display_field('vehicle','brand_jp', t('vehicle_detail.brand'), vehicle.brand_jp, 'main') }}
-      {{ display_field('vehicle','model_jp', t('vehicle_detail.model'), vehicle.model_jp) }}
+      {{ display_field('vehicle','brand_id', t('vehicle_detail.brand'), brand_label, 'main') }}
+      {{ display_field('vehicle','model_id', t('vehicle_detail.model'), model_label) }}
       {{ display_field('vehicle','type_designation_code', t('vehicle_detail.type_designation_code'), vehicle.type_designation_code) }}
       {{ display_field('vehicle','plate_no', t('vehicle_detail.plate_no'), vehicle.masked_plate_no) }}
       {{ display_field('vehicle','vin', t('vehicle_detail.vin'), vehicle.vin) }}
@@ -18,9 +20,11 @@
 
     <div class="mt-2 d-flex gap-2">
       {{ action_button('vehicle','edit', t('vehicle_detail.edit'), url_for('ui.vehicle_edit', vehicle_id=vehicle.id, lang=lang)) }}
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('qr.qr_public', qr_slug='abc123', lang=lang) }}">
-        {{ t('vehicle_detail.qr_demo') }}
-      </a>
+      {% if qr_slug %}
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('qr.qr_public', qr_slug=qr_slug, lang=lang) }}">
+          {{ t('vehicle_detail.qr_demo') }}
+        </a>
+      {% endif %}
     </div>
   </div>
 

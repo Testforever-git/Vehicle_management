@@ -35,3 +35,40 @@
     </div>
   {% endif %}
 {%- endmacro %}
+
+{% macro select_field(table, field, label, name, value, options) -%}
+  {% set access_level = field_perm.get_access_level(table, field) %}
+  {% if access_level < 10 %}
+    <div class="mb-3 ac-field ac-field-readonly">
+      <label class="form-label ac-field-label">{{ label }}</label>
+      <div class="ac-field-value readonly">***</div>
+    </div>
+  {% elif access_level < 20 %}
+    {% set selected = namespace(label='-') %}
+    {% for option in options %}
+      {% if option.value|string == value|string %}
+        {% set selected.label = option.label %}
+      {% endif %}
+    {% endfor %}
+    <div class="mb-3 ac-field ac-field-readonly">
+      <label class="form-label ac-field-label">{{ label }}</label>
+      <div class="ac-field-value readonly">{{ selected.label }}</div>
+    </div>
+  {% else %}
+    <div class="mb-3 ac-field ac-field-editable">
+      <label class="form-label ac-field-label">{{ label }}</label>
+      <select class="form-select ac-input" name="{{ name }}">
+        <option value="">{{ t('vehicle_edit.select_placeholder') }}</option>
+        {% for option in options %}
+          {% set is_selected = option.value|string == value|string %}
+          <option value="{{ option.value }}"
+                  {% if option.brand_id is defined %}data-brand-id="{{ option.brand_id }}"{% endif %}
+                  {% if not option.is_active and not is_selected %}disabled{% endif %}
+                  {% if is_selected %}selected{% endif %}>
+            {{ option.label }}{% if not option.is_active and is_selected %} {{ t('vehicle_edit.inactive_label') }}{% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  {% endif %}
+{%- endmacro %}
