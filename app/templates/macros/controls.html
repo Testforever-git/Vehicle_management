@@ -1,19 +1,25 @@
 {% macro display_field(table, field, label, value, style='body') -%}
-  {% if field_perm.can_view(table, field) %}
-    <div class="ac-field ac-field-{{ style }}">
-      <div class="ac-field-label">{{ label }}</div>
-      <div class="ac-field-value ac-text-body">
+  {% set access_level = field_perm.get_access_level(table, field) %}
+  <div class="ac-field ac-field-{{ style }}">
+    <div class="ac-field-label">{{ label }}</div>
+    <div class="ac-field-value ac-text-body">
+      {% if access_level < 10 %}
+        ***
+      {% else %}
         {{ value if value is not none and value != '' else '-' }}
-      </div>
+      {% endif %}
     </div>
-  {% endif %}
+  </div>
 {%- endmacro %}
 
 {% macro input_field(table, field, label, name, value, type='text') -%}
-  {% set v = field_perm.can_view(table, field) %}
-  {% set e = field_perm.can_edit(table, field) %}
-  {% if not v %}
-  {% elif v and not e %}
+  {% set access_level = field_perm.get_access_level(table, field) %}
+  {% if access_level < 10 %}
+    <div class="mb-3 ac-field ac-field-readonly">
+      <label class="form-label ac-field-label">{{ label }}</label>
+      <div class="ac-field-value readonly">***</div>
+    </div>
+  {% elif access_level < 20 %}
     <div class="mb-3 ac-field ac-field-readonly">
       <label class="form-label ac-field-label">{{ label }}</label>
       <div class="ac-field-value readonly">{{ value if value else '-' }}</div>
