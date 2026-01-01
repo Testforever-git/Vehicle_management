@@ -51,7 +51,6 @@ Define these classes and use consistently:
 
 ## 7.language&Text
 - 所有页面支持中日双语。统一使用navibar上的语言切换按钮进行切换
-<<<<<<< HEAD
 - 所有静态文本用yaml文件保存. 位置为 app/static/i18n/
     每一个页面对一个一个yaml，每个yaml中用 cn/jp层级，区分不同语言的文本。
 	如 app/static/i18n/vehicle_edit.yaml
@@ -69,6 +68,7 @@ Define these classes and use consistently:
 
 ## 9 UI上修改时的逻辑
 - 所有可以进行编辑的页面，修改后的控件显示字体为红色，点击保存之后恢复为原来的颜色。
+- 所有list统一风格，左侧为checkbox，标题左侧的checkbox为全选。 支持单个和批量删除。 删除时询问用户是否删除。
 
 
 
