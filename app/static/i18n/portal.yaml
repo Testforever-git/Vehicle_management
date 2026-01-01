@@ -1,9 +1,11 @@
 jp:
+  brand: "Auto Connect"
   nav:
     home: "ホーム"
     repair: "修理"
     rental: "レンタル"
     trade: "買取・販売"
+    management: "管理システムログイン"
   home_title: "会社サービス紹介"
   home_intro: "私たちは車両修理、レンタル、中古車買取・販売を一括で提供し、安心して車と向き合える環境づくりを支援しています。"
   sections:
@@ -46,11 +48,13 @@ jp:
   rental_thumbnail_hint: "サムネイルをクリックすると大きく表示されます。"
   rental_back: "一覧に戻る"
 cn:
+  brand: "Auto Connect"
   nav:
     home: "首页"
     repair: "维修"
     rental: "租赁"
     trade: "收购/出售"
+    management: "管理系统登录"
   home_title: "公司业务介绍"
   home_intro: "我们提供车辆修理、车辆出租以及二手车收购与出售的一站式服务，帮助客户安心用车。"
   sections:

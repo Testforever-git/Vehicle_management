@@ -47,11 +47,13 @@ def create_app() -> Flask:
     # ---- Blueprints ----
     from .blueprints.auth import bp as auth_bp
     from .blueprints.ui import bp as ui_bp
+    from .blueprints.portal import bp as portal_bp
     from .blueprints.qr import bp as qr_bp
     from .blueprints.admin import bp as admin_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(ui_bp)
+    app.register_blueprint(portal_bp)
     app.register_blueprint(qr_bp)
     app.register_blueprint(admin_bp)
 

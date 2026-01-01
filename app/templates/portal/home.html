@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'portal/base.html' %}
 
 {% block page_title %}{{ t('portal.home_title') }}{% endblock %}
 
@@ -9,16 +9,16 @@
 
 <ul class="nav nav-pills mb-4">
   <li class="nav-item">
-    <a class="nav-link active" href="{{ url_for('ui.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
+    <a class="nav-link active" href="{{ url_for('portal.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('ui.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
+    <a class="nav-link" href="{{ url_for('portal.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('ui.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
+    <a class="nav-link" href="{{ url_for('portal.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('ui.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
+    <a class="nav-link" href="{{ url_for('portal.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
   </li>
 </ul>
 
@@ -27,7 +27,7 @@
     <div class="card h-100 p-3">
       <h5 class="mb-2">{{ t('portal.sections.repair_title') }}</h5>
       <p class="text-muted">{{ t('portal.sections.repair_summary') }}</p>
-      <a class="btn btn-outline-primary mt-auto" href="{{ url_for('ui.portal_repair', lang=lang) }}">
+      <a class="btn btn-outline-primary mt-auto" href="{{ url_for('portal.portal_repair', lang=lang) }}">
         {{ t('portal.sections.repair_cta') }}
       </a>
     </div>
@@ -36,7 +36,7 @@
     <div class="card h-100 p-3">
       <h5 class="mb-2">{{ t('portal.sections.rental_title') }}</h5>
       <p class="text-muted">{{ t('portal.sections.rental_summary') }}</p>
-      <a class="btn btn-outline-primary mt-auto" href="{{ url_for('ui.portal_rentals', lang=lang) }}">
+      <a class="btn btn-outline-primary mt-auto" href="{{ url_for('portal.portal_rentals', lang=lang) }}">
         {{ t('portal.sections.rental_cta') }}
       </a>
     </div>
@@ -45,7 +45,7 @@
     <div class="card h-100 p-3">
       <h5 class="mb-2">{{ t('portal.sections.trade_title') }}</h5>
       <p class="text-muted">{{ t('portal.sections.trade_summary') }}</p>
-      <a class="btn btn-outline-primary mt-auto" href="{{ url_for('ui.portal_trade', lang=lang) }}">
+      <a class="btn btn-outline-primary mt-auto" href="{{ url_for('portal.portal_trade', lang=lang) }}">
         {{ t('portal.sections.trade_cta') }}
       </a>
     </div>

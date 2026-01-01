@@ -1,31 +1,31 @@
-{% extends 'base.html' %}
+{% extends 'portal/base.html' %}
 
 {% block page_title %}{{ t('portal.rentals_page_title') }}{% endblock %}
 
 {% block content %}
 <ul class="nav nav-pills mb-4">
   <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('ui.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
+    <a class="nav-link" href="{{ url_for('portal.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('ui.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
+    <a class="nav-link" href="{{ url_for('portal.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link active" href="{{ url_for('ui.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
+    <a class="nav-link active" href="{{ url_for('portal.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('ui.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
+    <a class="nav-link" href="{{ url_for('portal.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
   </li>
 </ul>
 
 <div class="row g-3">
   {% for v in vehicles %}
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <a class="text-decoration-none" href="{{ url_for('ui.portal_rental_detail', vehicle_id=v.id, lang=lang) }}">
+      <a class="text-decoration-none" href="{{ url_for('portal.portal_rental_detail', vehicle_id=v.id, lang=lang) }}">
         <div class="card h-100">
           {% if v.cover_filename %}
             <img class="card-img-top" style="height: 160px; object-fit: cover;"
-                 src="{{ url_for('ui.portal_vehicle_image', vin=v.vin, category='vehicle_photo', filename=v.cover_filename) }}"
+                 src="{{ url_for('portal.portal_vehicle_image', vin=v.vin, category='vehicle_photo', filename=v.cover_filename) }}"
                  alt="{{ t('portal.rentals_cover_alt') }}">
           {% else %}
             <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 160px;">
