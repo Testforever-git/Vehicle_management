@@ -1,0 +1,14 @@
+jp:
+  section_title: "ステータス入力"
+  fields:
+    status: "ステータス"
+    mileage: "走行距離"
+    fuel_level: "燃料/電量"
+    location_desc: "位置"
+cn:
+  section_title: "状态录入"
+  fields:
+    status: "状态"
+    mileage: "里程"
+    fuel_level: "油量/电量"
+    location_desc: "位置"

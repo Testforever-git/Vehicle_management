@@ -89,6 +89,20 @@ def _create_tables():
         """
     )
 
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS vehicle_qr (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            vehicle_id INT NOT NULL,
+            qr_slug VARCHAR(64) NOT NULL UNIQUE,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_vehicle_qr_vehicle_id (vehicle_id),
+            CONSTRAINT fk_vehicle_qr_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
 
 def _seed_roles():
     roles = [
@@ -172,8 +186,8 @@ def _seed_users():
 
 def _seed_field_permissions():
     rules = [
-        ("vehicle", "brand_jp", "basic", False, "车辆品牌(日文)"),
-        ("vehicle", "model_jp", "basic", False, "车辆型号(日文)"),
+        ("vehicle", "brand_id", "basic", False, "车辆品牌"),
+        ("vehicle", "model_id", "basic", False, "车辆型号"),
         ("vehicle", "plate_no", "basic", False, "车牌号"),
         ("vehicle", "vin", "advanced", False, "VIN"),
         ("vehicle", "type_designation_code", "advanced", False, "型式指定番号"),
