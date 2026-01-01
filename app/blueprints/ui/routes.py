@@ -30,6 +30,7 @@ from ...repositories.vehicle_media_repo import (
     create_vehicle_media,
     delete_vehicle_media,
     update_vehicle_media_paths,
+    set_primary_vehicle_media,
 )
 from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...repositories.qr_repo import ensure_vehicle_qr, get_vehicle_qr_by_vehicle_id
@@ -255,6 +256,23 @@ def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]
 def _media_filenames(rows: list[dict]) -> list[str]:
     return [os.path.basename(row.get("file_path", "")) for row in rows if row.get("file_path")]
 
+
+def _media_items(rows: list[dict]) -> list[dict]:
+    items = []
+    for row in rows:
+        file_path = row.get("file_path")
+        if not file_path:
+            continue
+        items.append(
+            {
+                "filename": os.path.basename(file_path),
+                "is_primary": bool(row.get("is_primary")) if "is_primary" in row else False,
+                "file_path": file_path,
+            }
+        )
+    return items
+
+
 def _t(key: str) -> str:
     lang = request.args.get("lang") or session.get("lang") or "jp"
     return _translator.t(lang, key)
@@ -282,9 +300,6 @@ def vehicle_image(vin: str, category: str, filename: str):
                 break
     return send_from_directory(dir_path, filename)
 
-@bp.get("/")
-def home():
-    return redirect(url_for("ui.dashboard"))
 
 @bp.get("/dashboard")
 def dashboard():
@@ -292,6 +307,7 @@ def dashboard():
         return redirect(url_for("auth.login"))
     _, total = list_vehicles()
     return render_template("dashboard.html", active_menu="dashboard", total=total)
+
 
 @bp.route("/vehicle/list", methods=["GET", "POST"])
 def vehicle_list():
@@ -462,6 +478,15 @@ def vehicle_edit(vehicle_id: int):
             _media_rel_paths(vin, PHOTO_DIR_CATEGORY, new_photos),
             get_current_user().user_id,
         )
+        primary_photo = (request.form.get("primary_vehicle_photo") or "").strip()
+        if primary_photo:
+            photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
+            primary_row = next(
+                (row for row in photo_rows if os.path.basename(row.get("file_path", "")) == primary_photo),
+                None,
+            )
+            if primary_row:
+                set_primary_vehicle_media(vehicle_id, PHOTO_FILE_TYPE, primary_row["file_path"])
 
         payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
@@ -485,7 +510,9 @@ def vehicle_edit(vehicle_id: int):
         return redirect(url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")))
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
-    vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
+    photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
+    vehicle_photos = _media_items(photo_rows)
+    has_primary_photo = any(item["is_primary"] for item in vehicle_photos)
     status = get_status(vehicle_id) or {}
     master_data = _load_master_data()
 
@@ -499,6 +526,7 @@ def vehicle_edit(vehicle_id: int):
         master_data=master_data,
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
+        has_primary_photo=has_primary_photo,
         form_action=url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")),
         cancel_url=url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")),
         is_new=False,
@@ -574,6 +602,7 @@ def vehicle_new():
         master_data=_load_master_data(),
         legal_docs=[],
         vehicle_photos=[],
+        has_primary_photo=False,
         form_action=url_for("ui.vehicle_new", lang=request.args.get("lang")),
         cancel_url=url_for("ui.vehicle_list", lang=request.args.get("lang")),
         is_new=True,

@@ -40,6 +40,8 @@ def list_vehicle_media(vehicle_id: int, file_type: str):
         return []
     columns = ["id", "vehicle_id", "file_type", "file_path"]
     available = _vehicle_media_columns()
+    if "is_primary" in available:
+        columns.append("is_primary")
     for optional in ["description", "uploaded_by", "uploaded_at"]:
         if optional in available:
             columns.append(optional)
@@ -104,4 +106,28 @@ def update_vehicle_media_paths(vehicle_id: int, old_prefix: str, new_prefix: str
         WHERE vehicle_id = %s
         """,
         (old_prefix, new_prefix, vehicle_id),
+    )
+
+
+def set_primary_vehicle_media(vehicle_id: int, file_type: str, file_path: str):
+    if not _vehicle_media_table_exists():
+        return 0
+    available = _vehicle_media_columns()
+    if "is_primary" not in available:
+        return 0
+    execute(
+        """
+        UPDATE vehicle_media
+        SET is_primary = 0
+        WHERE vehicle_id = %s AND file_type = %s
+        """,
+        (vehicle_id, file_type),
+    )
+    return execute(
+        """
+        UPDATE vehicle_media
+        SET is_primary = 1
+        WHERE vehicle_id = %s AND file_type = %s AND file_path = %s
+        """,
+        (vehicle_id, file_type, file_path),
     )
