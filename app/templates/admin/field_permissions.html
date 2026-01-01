@@ -28,6 +28,7 @@
         <label class="form-label ac-field-label">{{ t('admin_field_permissions.field') }}</label>
         <select class="form-select fp-select field-select" name="field_name" disabled>
           <option value="">{{ t('admin_field_permissions.select_field') }}</option>
+          <option value="__all__" data-table="__all__">{{ t('admin_field_permissions.all_fields') }}</option>
           {% for item in field_catalog %}
             <option value="{{ item.field_name }}" data-table="{{ item.table_name }}">{{ item.field_name }}</option>
           {% endfor %}
@@ -55,7 +56,18 @@
 <div class="card p-3">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h5 class="mb-0">{{ t('admin_field_permissions.list_title') }}</h5>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <form method="get" action="{{ url_for('admin.field_permissions', lang=lang) }}" class="d-flex align-items-center gap-2">
+        <label class="form-label ac-field-label mb-0">{{ t('admin_field_permissions.filter_role') }}</label>
+        <select class="form-select fp-select" name="role_id" onchange="this.form.submit()">
+          <option value="">{{ t('admin_field_permissions.filter_all') }}</option>
+          {% for role in roles %}
+            <option value="{{ role.id }}" {% if selected_role_id == role.id|string %}selected{% endif %}>
+              {{ role.role_code }}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
       <button class="btn btn-outline-danger"
               form="field-permissions-list-form"
               name="action"
@@ -76,8 +88,8 @@
         id="field-permissions-list-form"
         class="field-permissions-list-form">
     <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
-        <thead>
+      <table class="table table-sm align-middle mb-0 field-permissions-table">
+        <thead class="table-light">
           <tr>
             <th scope="col">
               <input type="checkbox" id="select-all-rows">
@@ -132,6 +144,9 @@
   </form>
 </div>
 <style>
+  .field-permissions-table thead th {
+    background-color: #f3f5f8;
+  }
   .fp-select {
     max-width: 160px;
   }
@@ -159,7 +174,7 @@
       const selectedTable = tableSelect.value;
       let hasVisible = false;
       fieldSelect.querySelectorAll("option[data-table]").forEach((option) => {
-        const matches = option.dataset.table === selectedTable;
+        const matches = option.dataset.table === selectedTable || option.dataset.table === "__all__";
         option.hidden = !matches;
         option.disabled = !matches;
         if (matches) {
