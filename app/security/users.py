@@ -12,6 +12,7 @@ class CurrentUser:
     role_code: str
     full_name: str = ""
     user_id: Optional[int] = None
+    role_id: Optional[int] = None
 
 
 def get_current_user() -> CurrentUser:
@@ -26,6 +27,7 @@ def get_current_user() -> CurrentUser:
                     role_code=row["role_code"],
                     full_name=row.get("full_name") or row["username"],
                     user_id=row["id"],
+                    role_id=row.get("role_id"),
                 )
         return CurrentUser(False, username="guest", role_code="public", full_name="")
     except Exception:
