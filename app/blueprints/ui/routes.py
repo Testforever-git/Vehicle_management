@@ -6,14 +6,23 @@ from flask import render_template, redirect, url_for, abort, request, flash, sen
 from . import bp
 from ...i18n import Translator
 from ...security.users import get_current_user
+from ...security.permissions import PermissionService
 from ...utils.masking import mask_plate
 from ...repositories.vehicle_repo import (
     list_vehicles,
     get_vehicle,
+    get_vehicle_i18n,
     get_vehicle_by_vin,
     get_status,
     update_vehicle,
     create_vehicle,
+    delete_vehicles,
+)
+from ...repositories.master_data_repo import (
+    list_brands,
+    list_models,
+    list_colors,
+    list_enums,
 )
 from ...repositories.vehicle_media_repo import (
     list_vehicle_media,
@@ -31,20 +40,19 @@ def _require_login():
 VEHICLE_FIELDS = [
     {"name": "vin", "label_key": "vehicle_edit.fields.vin", "type": "text"},
     {"name": "plate_no", "label_key": "vehicle_edit.fields.plate_no", "type": "text"},
-    {"name": "brand_cn", "label_key": "vehicle_edit.fields.brand_cn", "type": "text"},
-    {"name": "brand_jp", "label_key": "vehicle_edit.fields.brand_jp", "type": "text"},
-    {"name": "model_cn", "label_key": "vehicle_edit.fields.model_cn", "type": "text"},
-    {"name": "model_jp", "label_key": "vehicle_edit.fields.model_jp", "type": "text"},
-    {"name": "color_cn", "label_key": "vehicle_edit.fields.color_cn", "type": "text"},
-    {"name": "color_jp", "label_key": "vehicle_edit.fields.color_jp", "type": "text"},
-    {"name": "model_year", "label_key": "vehicle_edit.fields.model_year", "type": "number"},
+    {"name": "brand_id", "label_key": "vehicle_edit.fields.brand_id", "type": "select", "options_key": "brands"},
+    {"name": "model_id", "label_key": "vehicle_edit.fields.model_id", "type": "select", "options_key": "models"},
+    {"name": "color_id", "label_key": "vehicle_edit.fields.color_id", "type": "select", "options_key": "colors"},
+    {"name": "model_year_ad", "label_key": "vehicle_edit.fields.model_year_ad", "type": "number"},
+    {"name": "model_year_era", "label_key": "vehicle_edit.fields.model_year_era", "type": "text"},
+    {"name": "model_year_era_year", "label_key": "vehicle_edit.fields.model_year_era_year", "type": "number"},
     {"name": "type_designation_code", "label_key": "vehicle_edit.fields.type_designation_code", "type": "text"},
     {"name": "classification_number", "label_key": "vehicle_edit.fields.classification_number", "type": "text"},
     {"name": "engine_code", "label_key": "vehicle_edit.fields.engine_code", "type": "text"},
-    {"name": "engine_layout", "label_key": "vehicle_edit.fields.engine_layout", "type": "text"},
+    {"name": "engine_layout_code", "label_key": "vehicle_edit.fields.engine_layout_code", "type": "select", "options_key": "engine_layout"},
     {"name": "displacement_cc", "label_key": "vehicle_edit.fields.displacement_cc", "type": "number"},
-    {"name": "fuel_type", "label_key": "vehicle_edit.fields.fuel_type", "type": "text"},
-    {"name": "drive_type", "label_key": "vehicle_edit.fields.drive_type", "type": "text"},
+    {"name": "fuel_type_code", "label_key": "vehicle_edit.fields.fuel_type_code", "type": "select", "options_key": "fuel_type"},
+    {"name": "drive_type_code", "label_key": "vehicle_edit.fields.drive_type_code", "type": "select", "options_key": "drive_type"},
     {"name": "transmission", "label_key": "vehicle_edit.fields.transmission", "type": "text"},
     {"name": "ownership_type", "label_key": "vehicle_edit.fields.ownership_type", "type": "text"},
     {"name": "owner_id", "label_key": "vehicle_edit.fields.owner_id", "type": "text"},
@@ -66,6 +74,13 @@ NULLABLE_NUMERIC_FIELDS = {
     "driver_id",
     "garage_lat",
     "garage_lng",
+    "brand_id",
+    "model_id",
+    "color_id",
+    "model_year_ad",
+    "model_year_era_year",
+    "displacement_cc",
+    "purchase_price",
 }
 
 NULLABLE_TEXT_FIELDS = {
@@ -140,6 +155,62 @@ def _payload_from_form():
     return payload
 
 
+def _load_master_data():
+    brands = list_brands()
+    models = list_models()
+    colors = list_colors()
+    enums = list_enums()
+
+    brand_options = [
+        {
+            "value": row["id"],
+            "label": f"{row['name_jp']} / {row['name_cn']}",
+            "is_active": bool(row.get("is_active", 1)),
+        }
+        for row in brands
+    ]
+    brand_map = {row["id"]: row for row in brands}
+    model_options = []
+    for row in models:
+        brand = brand_map.get(row["brand_id"])
+        brand_label = f"{brand['name_jp']} / {brand['name_cn']}" if brand else "-"
+        model_label = f"{row['name_jp']} / {row['name_cn']}"
+        model_options.append(
+            {
+                "value": row["id"],
+                "label": f"{brand_label} - {model_label}",
+                "is_active": bool(row.get("is_active", 1)),
+            }
+        )
+
+    color_options = [
+        {
+            "value": row["id"],
+            "label": f"{row['name_jp']} / {row['name_cn']}",
+            "is_active": bool(row.get("is_active", 1)),
+        }
+        for row in colors
+    ]
+    enum_groups = {}
+    for row in enums:
+        enum_groups.setdefault(row["enum_type"], []).append(
+            {
+                "value": row["enum_code"],
+                "label": f"{row['name_jp']} / {row['name_cn']}",
+                "is_active": bool(row.get("is_active", 1)),
+            }
+        )
+
+    return {
+        "brands": brand_options,
+        "models": model_options,
+        "colors": color_options,
+        "engine_layout": enum_groups.get("engine_layout", []),
+        "fuel_type": enum_groups.get("fuel_type", []),
+        "drive_type": enum_groups.get("drive_type", []),
+    }
+
+
 def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]:
     base_dir = _image_base_dir()
     safe_vin = _safe_vin(vin)
@@ -189,39 +260,73 @@ def home():
 def dashboard():
     if not _require_login():
         return redirect(url_for("auth.login"))
-    vehicles = list_vehicles()
-    total = len(vehicles)
+    _, total = list_vehicles()
     return render_template("dashboard.html", active_menu="dashboard", total=total)
 
-@bp.get("/vehicle/list")
+@bp.route("/vehicle/list", methods=["GET", "POST"])
 def vehicle_list():
     if not _require_login():
         return redirect(url_for("auth.login"))
 
-    rows = list_vehicles()
+    if request.method == "POST":
+        perms = PermissionService(get_current_user())
+        if not perms.can("vehicle", "edit"):
+            flash(_t("vehicle_list.messages.no_permission"), "warning")
+            return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))
+        action = request.form.get("action")
+        ids = [int(v) for v in request.form.getlist("vehicle_ids") if v.isdigit()]
+        if action == "delete" and ids:
+            delete_vehicles(ids)
+            flash(_t("vehicle_list.messages.deleted"), "success")
+        return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))
+
+    brand = request.args.get("brand", "").strip()
+    status = request.args.get("status", "").strip()
+    try:
+        page = int(request.args.get("page", "1") or 1)
+    except ValueError:
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", "20") or 20)
+    except ValueError:
+        per_page = 20
+    if per_page not in {20, 50}:
+        per_page = 20
+    if page < 1:
+        page = 1
+
+    rows, total = list_vehicles(
+        filters={"brand": brand, "status": status},
+        page=page,
+        per_page=per_page,
+    )
     vehicles = []
     for v in rows:
         vv = dict(v)
         vv["masked_plate_no"] = mask_plate(v.get("plate_no", ""))
-        # status 可选：如果你没建 vehicle_status 表，这里可以先不显示
-        try:
-            st = get_status(v["id"])
-            vv["status"] = st["status"] if st else "unknown"
-        except Exception:
+        if vv.get("status") is None:
             vv["status"] = "unknown"
         vehicles.append(vv)
 
-    status_options = [("available","available"), ("rented","rented"), ("maintenance","maintenance")]
+    status_options = [("available", "available"), ("rented", "rented"), ("maintenance", "maintenance")]
+    total_pages = max((total + per_page - 1) // per_page, 1)
 
-    class P:
-        total = len(vehicles)
+    pagination = {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+    }
 
     return render_template(
         "vehicle/list.html",
         active_menu="vehicle",
         vehicles=vehicles,
-        pagination=P(),
+        pagination=pagination,
         status_options=status_options,
+        filters={"brand": brand, "status": status},
     )
 
 @bp.get("/vehicle/<int:vehicle_id>")
@@ -229,7 +334,7 @@ def vehicle_detail(vehicle_id: int):
     if not _require_login():
         return redirect(url_for("auth.login"))
 
-    vehicle = get_vehicle(vehicle_id)
+    vehicle = get_vehicle_i18n(vehicle_id)
     if not vehicle:
         abort(404)
 
@@ -344,12 +449,14 @@ def vehicle_edit(vehicle_id: int):
 
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
     vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
+    master_data = _load_master_data()
 
     return render_template(
         "vehicle/edit.html",
         active_menu="vehicle",
         vehicle=vehicle,
         vehicle_fields=VEHICLE_FIELDS,
+        master_data=master_data,
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
         form_action=url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")),
@@ -417,6 +524,7 @@ def vehicle_new():
         active_menu="vehicle",
         vehicle=vehicle,
         vehicle_fields=VEHICLE_FIELDS,
+        master_data=_load_master_data(),
         legal_docs=[],
         vehicle_photos=[],
         form_action=url_for("ui.vehicle_new", lang=request.args.get("lang")),

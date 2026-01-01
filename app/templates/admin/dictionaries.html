@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_dictionaries.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">{{ t('admin_dictionaries.brand_section') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="dict_type" value="brand">
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.brand_code') }}</label>
+      <input class="form-control" name="brand_code">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_jp') }}</label>
+      <input class="form-control" name="name_jp">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_cn') }}</label>
+      <input class="form-control" name="name_cn">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_dictionaries.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_dictionaries.active_yes') }}</option>
+        <option value="0">{{ t('admin_dictionaries.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_dictionaries.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_dictionaries.active_yes') }}</option>
+        <option value="0">{{ t('admin_dictionaries.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-primary w-100">{{ t('admin_dictionaries.create') }}</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_dictionaries.brand_code') }}</th>
+          <th>{{ t('admin_dictionaries.name_jp') }}</th>
+          <th>{{ t('admin_dictionaries.name_cn') }}</th>
+          <th>{{ t('admin_dictionaries.active') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for brand in brands %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+            <input type="hidden" name="dict_type" value="brand">
+            <input type="hidden" name="brand_id" value="{{ brand.id }}">
+            <td>{{ brand.id }}</td>
+            <td><input class="form-control form-control-sm" name="brand_code" value="{{ brand.brand_code }}"></td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ brand.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ brand.name_cn }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if brand.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_yes') }}</option>
+                <option value="0" {% if not brand.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm" name="action" value="update">
+                {{ t('admin_dictionaries.update') }}
+              </button>
+              <button class="btn btn-outline-danger btn-sm ms-1" name="action" value="delete">
+                {{ t('admin_dictionaries.delete') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-muted">{{ t('admin_dictionaries.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">{{ t('admin_dictionaries.model_section') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="dict_type" value="model">
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.brand_label') }}</label>
+      <select class="form-select" name="brand_id">
+        {% for brand in brands %}
+          <option value="{{ brand.id }}">{{ brand.name_jp }} / {{ brand.name_cn }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_dictionaries.model_code') }}</label>
+      <input class="form-control" name="model_code">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_jp') }}</label>
+      <input class="form-control" name="name_jp">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_cn') }}</label>
+      <input class="form-control" name="name_cn">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_dictionaries.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_dictionaries.active_yes') }}</option>
+        <option value="0">{{ t('admin_dictionaries.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-primary w-100">{{ t('admin_dictionaries.create') }}</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_dictionaries.brand_label') }}</th>
+          <th>{{ t('admin_dictionaries.model_code') }}</th>
+          <th>{{ t('admin_dictionaries.name_jp') }}</th>
+          <th>{{ t('admin_dictionaries.name_cn') }}</th>
+          <th>{{ t('admin_dictionaries.active') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for model in models %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+            <input type="hidden" name="dict_type" value="model">
+            <input type="hidden" name="model_id" value="{{ model.id }}">
+            <td>{{ model.id }}</td>
+            <td>
+              <select class="form-select form-select-sm" name="brand_id">
+                {% for brand in brands %}
+                  <option value="{{ brand.id }}" {% if brand.id == model.brand_id %}selected{% endif %}>
+                    {{ brand.name_jp }} / {{ brand.name_cn }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input class="form-control form-control-sm" name="model_code" value="{{ model.model_code }}"></td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ model.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ model.name_cn }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if model.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_yes') }}</option>
+                <option value="0" {% if not model.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm" name="action" value="update">
+                {{ t('admin_dictionaries.update') }}
+              </button>
+              <button class="btn btn-outline-danger btn-sm ms-1" name="action" value="delete">
+                {{ t('admin_dictionaries.delete') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-muted">{{ t('admin_dictionaries.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">{{ t('admin_dictionaries.color_section') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="dict_type" value="color">
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.color_code') }}</label>
+      <input class="form-control" name="color_code">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_jp') }}</label>
+      <input class="form-control" name="name_jp">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_cn') }}</label>
+      <input class="form-control" name="name_cn">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_dictionaries.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_dictionaries.active_yes') }}</option>
+        <option value="0">{{ t('admin_dictionaries.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-primary w-100">{{ t('admin_dictionaries.create') }}</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_dictionaries.color_code') }}</th>
+          <th>{{ t('admin_dictionaries.name_jp') }}</th>
+          <th>{{ t('admin_dictionaries.name_cn') }}</th>
+          <th>{{ t('admin_dictionaries.active') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for color in colors %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+            <input type="hidden" name="dict_type" value="color">
+            <input type="hidden" name="color_id" value="{{ color.id }}">
+            <td>{{ color.id }}</td>
+            <td><input class="form-control form-control-sm" name="color_code" value="{{ color.color_code }}"></td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ color.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ color.name_cn }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if color.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_yes') }}</option>
+                <option value="0" {% if not color.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm" name="action" value="update">
+                {{ t('admin_dictionaries.update') }}
+              </button>
+              <button class="btn btn-outline-danger btn-sm ms-1" name="action" value="delete">
+                {{ t('admin_dictionaries.delete') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-muted">{{ t('admin_dictionaries.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card p-3">
+  <h5 class="mb-3">{{ t('admin_dictionaries.enum_section') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="dict_type" value="enum">
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_dictionaries.enum_type') }}</label>
+      <select class="form-select" name="enum_type">
+        <option value="engine_layout">engine_layout</option>
+        <option value="fuel_type">fuel_type</option>
+        <option value="drive_type">drive_type</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_dictionaries.enum_code') }}</label>
+      <input class="form-control" name="enum_code">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_jp') }}</label>
+      <input class="form-control" name="name_jp">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_dictionaries.name_cn') }}</label>
+      <input class="form-control" name="name_cn">
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-primary w-100">{{ t('admin_dictionaries.create') }}</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_dictionaries.enum_type') }}</th>
+          <th>{{ t('admin_dictionaries.enum_code') }}</th>
+          <th>{{ t('admin_dictionaries.name_jp') }}</th>
+          <th>{{ t('admin_dictionaries.name_cn') }}</th>
+          <th>{{ t('admin_dictionaries.active') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enum in enums %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
+            <input type="hidden" name="dict_type" value="enum">
+            <input type="hidden" name="enum_id" value="{{ enum.id }}">
+            <td>{{ enum.id }}</td>
+            <td><input class="form-control form-control-sm" name="enum_type" value="{{ enum.enum_type }}"></td>
+            <td><input class="form-control form-control-sm" name="enum_code" value="{{ enum.enum_code }}"></td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ enum.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ enum.name_cn }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if enum.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_yes') }}</option>
+                <option value="0" {% if not enum.is_active %}selected{% endif %}>{{ t('admin_dictionaries.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm" name="action" value="update">
+                {{ t('admin_dictionaries.update') }}
+              </button>
+              <button class="btn btn-outline-danger btn-sm ms-1" name="action" value="delete">
+                {{ t('admin_dictionaries.delete') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-muted">{{ t('admin_dictionaries.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
