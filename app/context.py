@@ -31,11 +31,16 @@ def register_context(app):
                 def can(self, *a, **k): return False
                 def can_view(self, *a, **k): return False
                 def can_edit(self, *a, **k): return False
+                def get_access_level(self, *a, **k): return 0
 
             def _t(key: str) -> str:
                 return key
 
-            current_user = type("U", (), {"is_authenticated": False, "username": "guest", "role_code": "public", "full_name": ""})()
+            current_user = type(
+                "U",
+                (),
+                {"is_authenticated": False, "username": "guest", "role_code": "public", "full_name": "", "role_id": None},
+            )()
             perms = _Dummy()
             field_perm = _Dummy()
             lang = request.args.get("lang") or current_app.config.get("APP_DEFAULT_LANG", "jp")

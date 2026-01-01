@@ -1,6 +1,12 @@
 from flask import render_template, redirect, url_for, request, flash
 from . import bp
-from ...repositories.field_permission_repo import list_field_permissions, update_field_permission
+from ...repositories.field_permission_repo import (
+    list_field_catalog,
+    list_field_permissions_admin,
+    refresh_field_catalog,
+    upsert_field_permission,
+    update_field_permission,
+)
 from ...repositories.role_repo import list_roles
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
 from ...repositories.vehicle_log_repo import log_vehicle_action
@@ -91,14 +97,19 @@ def user_actions():
 def field_permissions():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
+    refresh_field_catalog()
     roles = list_roles()
-    field_permissions = list_field_permissions()
+    field_catalog = list_field_catalog()
+    field_permissions = list_field_permissions_admin()
+    table_names = sorted({row["table_name"] for row in field_catalog})
     return render_template(
         "admin/field_permissions.html",
         active_menu="field_permissions",
         field_permissions=field_permissions,
         roles=roles,
-        access_levels=["basic", "advanced", "admin"],
+        field_catalog=field_catalog,
+        table_names=table_names,
+        access_levels=[0, 10, 20],
     )
 
 
@@ -106,19 +117,93 @@ def field_permissions():
 def update_field_permissions():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
+    action = request.form.get("action", "update")
+
+    if action == "bulk_update":
+        permission_ids = [int(pid) for pid in request.form.getlist("permission_id") if pid]
+        role_ids = [int(rid) for rid in request.form.getlist("role_id")]
+        table_names = request.form.getlist("table_name")
+        field_names = request.form.getlist("field_name")
+        access_levels = [int(level) for level in request.form.getlist("access_level")]
+        descriptions = request.form.getlist("description")
+
+        if not (
+            len(permission_ids)
+            == len(role_ids)
+            == len(table_names)
+            == len(field_names)
+            == len(access_levels)
+            == len(descriptions)
+        ):
+            flash("invalid field permission update", "warning")
+            return redirect(url_for("admin.field_permissions"))
+
+        for permission_id, role_id, table_name, field_name, access_level, description in zip(
+            permission_ids,
+            role_ids,
+            table_names,
+            field_names,
+            access_levels,
+            descriptions,
+        ):
+            update_field_permission(
+                permission_id,
+                role_id,
+                table_name.strip(),
+                field_name.strip(),
+                access_level,
+                description.strip(),
+            )
+            log_vehicle_action(
+                None,
+                actor=get_current_user().username,
+                action_type="field_permission_update",
+                action_detail={
+                    "permission_id": permission_id,
+                    "role_id": role_id,
+                    "table_name": table_name,
+                    "field_name": field_name,
+                    "access_level": access_level,
+                },
+                source_module="admin",
+            )
+        flash("field permission updated", "success")
+        return redirect(url_for("admin.field_permissions"))
     permission_id = int(request.form.get("permission_id", "0") or 0)
-    access_level = request.form.get("access_level", "basic")
-    min_role_code = request.form.get("min_role_code", "user")
-    is_visible = request.form.get("is_visible") == "1"
-    is_editable = request.form.get("is_editable") == "1"
+    role_id = int(request.form.get("role_id", "0") or 0)
+    table_name = request.form.get("table_name", "").strip()
+    field_name = request.form.get("field_name", "").strip()
+    access_level = int(request.form.get("access_level", "0") or 0)
     description = request.form.get("description", "").strip()
+
+    if not role_id or not table_name or not field_name:
+        flash("invalid field permission update", "warning")
+        return redirect(url_for("admin.field_permissions"))
+
+    if action == "create":
+        upsert_field_permission(role_id, table_name, field_name, access_level, description)
+        log_vehicle_action(
+            None,
+            actor=get_current_user().username,
+            action_type="field_permission_create",
+            action_detail={
+                "role_id": role_id,
+                "table_name": table_name,
+                "field_name": field_name,
+                "access_level": access_level,
+            },
+            source_module="admin",
+        )
+        flash("field permission created", "success")
+        return redirect(url_for("admin.field_permissions"))
+
     if permission_id:
         update_field_permission(
             permission_id,
+            role_id,
+            table_name,
+            field_name,
             access_level,
-            min_role_code,
-            is_visible,
-            is_editable,
             description,
         )
         log_vehicle_action(
@@ -127,10 +212,10 @@ def update_field_permissions():
             action_type="field_permission_update",
             action_detail={
                 "permission_id": permission_id,
+                "role_id": role_id,
+                "table_name": table_name,
+                "field_name": field_name,
                 "access_level": access_level,
-                "min_role_code": min_role_code,
-                "is_visible": is_visible,
-                "is_editable": is_editable,
             },
             source_module="admin",
         )
