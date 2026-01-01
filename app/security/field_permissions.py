@@ -32,7 +32,13 @@ class FieldPermissionService:
         if field in self._edit_overrides.get(table, set()):
             return 20
         rule = self._rules.get((table, field))
+        if not rule and field.endswith("_cn"):
+            rule = self._rules.get((table, f"{field[:-3]}_jp"))
+        if not rule and field.endswith("_jp"):
+            rule = self._rules.get((table, f"{field[:-3]}_cn"))
         if not rule:
+            if self.role == "admin":
+                return 20
             return 0
         return int(rule.get("access_level") or 0)
 
