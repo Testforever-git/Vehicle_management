@@ -224,3 +224,6 @@ WHERE table_schema = DATABASE()
   user
   password
   charset
+
+## 杂项
+- 字段区分中日文时，必须以_cn 和 _jp结尾
