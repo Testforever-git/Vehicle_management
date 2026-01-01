@@ -10,6 +10,7 @@ class FieldPermissionService:
     def __init__(self, current_user):
         self.user = current_user
         self.role = getattr(current_user, "role_code", "public") or "public"
+        self.role_id = getattr(current_user, "role_id", None)
         self._rules = self._load_rules()
         self._edit_overrides = {
             "vehicle": {"vin", "plate_no", "brand_jp", "model_jp", "type_designation_code"},
@@ -17,7 +18,9 @@ class FieldPermissionService:
 
     def _load_rules(self):
         try:
-            rows = list_field_permissions()
+            if not self.role_id:
+                return {}
+            rows = list_field_permissions(self.role_id)
         except Exception:
             rows = []
         return {
@@ -25,40 +28,22 @@ class FieldPermissionService:
             for row in rows
         }
 
-    def _role_rank(self, role_code: str) -> int:
-        rank = {
-            "public": 1,
-            "user": 1,
-            "engineer": 2,
-            "admin": 3,
-        }
-        return rank.get(role_code, 0)
-
-    def _level_rank(self, level: str) -> int:
-        return {"basic": 1, "advanced": 2, "admin": 3}.get(level, 3)
-
-    def _can_access(self, rule: dict) -> bool:
-        access_rank = self._level_rank(rule.get("access_level", "admin"))
-        min_role_rank = self._role_rank(rule.get("min_role_code", "admin"))
-        required_rank = max(access_rank, min_role_rank)
-        return self._role_rank(self.role) >= required_rank
+    def get_access_level(self, table: str, field: str) -> int:
+        if field in self._edit_overrides.get(table, set()):
+            return 20
+        rule = self._rules.get((table, field))
+        if not rule and field.endswith("_cn"):
+            rule = self._rules.get((table, f"{field[:-3]}_jp"))
+        if not rule and field.endswith("_jp"):
+            rule = self._rules.get((table, f"{field[:-3]}_cn"))
+        if not rule:
+            if self.role == "admin":
+                return 20
+            return 0
+        return int(rule.get("access_level") or 0)
 
     def can_view(self, table: str, field: str) -> bool:
-        if field in self._edit_overrides.get(table, set()):
-            return True
-        rule = self._rules.get((table, field))
-        if not rule:
-            return self.role == "admin"
-        if not rule.get("is_visible"):
-            return False
-        return self._can_access(rule)
+        return self.get_access_level(table, field) >= 10
 
     def can_edit(self, table: str, field: str) -> bool:
-        if field in self._edit_overrides.get(table, set()):
-            return True
-        rule = self._rules.get((table, field))
-        if not rule:
-            return self.role == "admin"
-        if not rule.get("is_editable"):
-            return False
-        return self._can_access(rule)
+        return self.get_access_level(table, field) >= 20
