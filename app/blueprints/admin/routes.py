@@ -1,16 +1,73 @@
 from flask import render_template, redirect, url_for, request, flash
 from . import bp
-from ...repositories.field_permission_repo import list_field_permissions, update_field_permission
+from ...repositories.field_permission_repo import (
+    list_field_catalog,
+    list_field_permissions_admin,
+    refresh_field_catalog,
+    upsert_field_permission,
+    update_field_permission,
+    delete_field_permission,
+)
 from ...repositories.role_repo import list_roles
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
 from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...security.users import get_current_user
 from werkzeug.security import generate_password_hash
 
+SYSTEM_FIELDS = {
+    "created_at",
+    "created_by",
+    "created_date",
+    "updated_at",
+    "updated_by",
+    "updated_date",
+}
+
 
 def _require_admin():
     u = get_current_user()
     return u.is_authenticated and u.role_code == "admin"
+
+
+def _catalog_map(field_catalog):
+    catalog = {}
+    for row in field_catalog:
+        catalog.setdefault(row["table_name"], set()).add(row["field_name"])
+    return catalog
+
+
+def _logical_field_name(table_fields, field_name: str) -> str:
+    if field_name.endswith(("_cn", "_jp")):
+        base = field_name[:-3]
+        if f"{base}_cn" in table_fields and f"{base}_jp" in table_fields:
+            return base
+    return field_name
+
+
+def _actual_fields(table_fields, logical_field: str):
+    candidates = [logical_field, f"{logical_field}_cn", f"{logical_field}_jp"]
+    return [name for name in candidates if name in table_fields]
+
+
+def _logical_fields_for_table(table_fields):
+    logical_fields = []
+    seen = set()
+    for field_name in sorted(table_fields):
+        if field_name in SYSTEM_FIELDS:
+            continue
+        logical_name = _logical_field_name(table_fields, field_name)
+        if logical_name in SYSTEM_FIELDS or logical_name in seen:
+            continue
+        seen.add(logical_name)
+        logical_fields.append(logical_name)
+    return logical_fields
+
+
+def _admin_role_id(roles):
+    for role in roles:
+        if role["role_code"] == "admin":
+            return role["id"]
+    return None
 
 
 @bp.get("/users")
@@ -91,14 +148,63 @@ def user_actions():
 def field_permissions():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
+    refresh_field_catalog()
     roles = list_roles()
-    field_permissions = list_field_permissions()
+    admin_role_id = _admin_role_id(roles)
+    roles = [role for role in roles if role["role_code"] != "admin"]
+    field_catalog = list_field_catalog()
+    field_permissions = list_field_permissions_admin()
+    selected_role_id = request.args.get("role_id", "").strip()
+    catalog_map = _catalog_map(field_catalog)
+    table_names = sorted(catalog_map.keys())
+    logical_field_catalog = []
+    for table_name in table_names:
+        for logical_name in _logical_fields_for_table(catalog_map[table_name]):
+            logical_field_catalog.append({"table_name": table_name, "field_name": logical_name})
+    grouped_permissions = {}
+    for row in field_permissions:
+        if row["role_id"] == admin_role_id:
+            continue
+        table_fields = catalog_map.get(row["table_name"], set())
+        if row["field_name"] in SYSTEM_FIELDS:
+            continue
+        logical_name = _logical_field_name(table_fields, row["field_name"])
+        if logical_name in SYSTEM_FIELDS:
+            continue
+        key = (row["role_id"], row["table_name"], logical_name)
+        existing = grouped_permissions.get(key)
+        if not existing:
+            grouped_permissions[key] = {
+                "role_id": row["role_id"],
+                "role_code": row["role_code"],
+                "name_cn": row["name_cn"],
+                "name_jp": row["name_jp"],
+                "table_name": row["table_name"],
+                "field_name": logical_name,
+                "access_level": row["access_level"],
+                "description": row["description"],
+            }
+        else:
+            existing["access_level"] = max(existing["access_level"], row["access_level"])
+            if not existing["description"] and row["description"]:
+                existing["description"] = row["description"]
+    grouped_list = sorted(
+        grouped_permissions.values(),
+        key=lambda item: (item["role_code"], item["table_name"], item["field_name"]),
+    )
+    if selected_role_id:
+        grouped_list = [
+            item for item in grouped_list if str(item["role_id"]) == selected_role_id
+        ]
     return render_template(
         "admin/field_permissions.html",
         active_menu="field_permissions",
-        field_permissions=field_permissions,
+        field_permissions=grouped_list,
         roles=roles,
-        access_levels=["basic", "advanced", "admin"],
+        field_catalog=logical_field_catalog,
+        table_names=table_names,
+        access_levels=[10, 20],
+        selected_role_id=selected_role_id,
     )
 
 
@@ -106,31 +212,186 @@ def field_permissions():
 def update_field_permissions():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
+    action = request.form.get("action", "update")
+    roles = list_roles()
+    admin_role_id = _admin_role_id(roles)
+
+    if action == "bulk_update":
+        role_ids = [int(rid) for rid in request.form.getlist("role_id")]
+        table_names = request.form.getlist("table_name")
+        field_names = request.form.getlist("field_name")
+        access_levels = [int(level) for level in request.form.getlist("access_level")]
+        descriptions = request.form.getlist("description")
+        if not (
+            len(role_ids)
+            == len(table_names)
+            == len(field_names)
+            == len(access_levels)
+            == len(descriptions)
+        ):
+            flash("invalid field permission update", "warning")
+            return redirect(url_for("admin.field_permissions"))
+
+        field_catalog = list_field_catalog()
+        catalog_map = _catalog_map(field_catalog)
+        for role_id, table_name, field_name, access_level, description in zip(
+            role_ids,
+            table_names,
+            field_names,
+            access_levels,
+            descriptions,
+        ):
+            if role_id == admin_role_id:
+                continue
+            table_name = table_name.strip()
+            field_name = field_name.strip()
+            if not role_id or not table_name or not field_name:
+                continue
+            table_fields = catalog_map.get(table_name, set())
+            for actual_field in _actual_fields(table_fields, field_name):
+                if actual_field in SYSTEM_FIELDS:
+                    delete_field_permission(role_id, table_name, actual_field)
+                    continue
+                if access_level < 10:
+                    delete_field_permission(role_id, table_name, actual_field)
+                    continue
+                upsert_field_permission(
+                    role_id,
+                    table_name,
+                    actual_field,
+                    access_level,
+                    description.strip(),
+                )
+                log_vehicle_action(
+                    None,
+                    actor=get_current_user().username,
+                    action_type="field_permission_update",
+                    action_detail={
+                        "role_id": role_id,
+                        "table_name": table_name,
+                        "field_name": actual_field,
+                        "access_level": access_level,
+                    },
+                    source_module="admin",
+                )
+        flash("field permission updated", "success")
+        return redirect(url_for("admin.field_permissions"))
+
+    if action == "bulk_delete":
+        selected_rows = {int(idx) for idx in request.form.getlist("row_select")}
+        role_ids = [int(rid) for rid in request.form.getlist("role_id")]
+        table_names = request.form.getlist("table_name")
+        field_names = request.form.getlist("field_name")
+        if not (
+            len(role_ids) == len(table_names) == len(field_names)
+        ):
+            flash("invalid field permission update", "warning")
+            return redirect(url_for("admin.field_permissions"))
+
+        field_catalog = list_field_catalog()
+        catalog_map = _catalog_map(field_catalog)
+        for index, (role_id, table_name, field_name) in enumerate(
+            zip(role_ids, table_names, field_names)
+        ):
+            if index not in selected_rows:
+                continue
+            if role_id == admin_role_id:
+                continue
+            table_name = table_name.strip()
+            field_name = field_name.strip()
+            if not role_id or not table_name or not field_name:
+                continue
+            table_fields = catalog_map.get(table_name, set())
+            for actual_field in _actual_fields(table_fields, field_name):
+                delete_field_permission(role_id, table_name, actual_field)
+                log_vehicle_action(
+                    None,
+                    actor=get_current_user().username,
+                    action_type="field_permission_delete",
+                    action_detail={
+                        "role_id": role_id,
+                        "table_name": table_name,
+                        "field_name": actual_field,
+                    },
+                    source_module="admin",
+                )
+        flash("field permission deleted", "success")
+        return redirect(url_for("admin.field_permissions"))
     permission_id = int(request.form.get("permission_id", "0") or 0)
-    access_level = request.form.get("access_level", "basic")
-    min_role_code = request.form.get("min_role_code", "user")
-    is_visible = request.form.get("is_visible") == "1"
-    is_editable = request.form.get("is_editable") == "1"
+    role_id = int(request.form.get("role_id", "0") or 0)
+    table_name = request.form.get("table_name", "").strip()
+    field_name = request.form.get("field_name", "").strip()
+    access_level = int(request.form.get("access_level", "0") or 0)
     description = request.form.get("description", "").strip()
-    if permission_id:
-        update_field_permission(
-            permission_id,
-            access_level,
-            min_role_code,
-            is_visible,
-            is_editable,
-            description,
+
+    if not role_id or not table_name or not field_name:
+        flash("invalid field permission update", "warning")
+        return redirect(url_for("admin.field_permissions"))
+
+    if action == "create":
+        if role_id == admin_role_id:
+            flash("invalid field permission update", "warning")
+            return redirect(url_for("admin.field_permissions"))
+        if access_level < 10:
+            flash("invalid field permission update", "warning")
+            return redirect(url_for("admin.field_permissions"))
+        field_catalog = list_field_catalog()
+        catalog_map = _catalog_map(field_catalog)
+        table_fields = catalog_map.get(table_name, set())
+        if field_name == "__all__":
+            field_names = _logical_fields_for_table(table_fields)
+        else:
+            field_names = [field_name]
+        for logical_field in field_names:
+            for actual_field in _actual_fields(table_fields, logical_field):
+                if actual_field in SYSTEM_FIELDS:
+                    continue
+                upsert_field_permission(
+                    role_id,
+                    table_name,
+                    actual_field,
+                    access_level,
+                    description,
+                )
+        log_vehicle_action(
+            None,
+            actor=get_current_user().username,
+            action_type="field_permission_create",
+            action_detail={
+                "role_id": role_id,
+                "table_name": table_name,
+                "field_name": field_name,
+                "access_level": access_level,
+            },
+            source_module="admin",
         )
+        flash("field permission created", "success")
+        return redirect(url_for("admin.field_permissions"))
+
+    if permission_id:
+        field_catalog = list_field_catalog()
+        catalog_map = _catalog_map(field_catalog)
+        table_fields = catalog_map.get(table_name, set())
+        if role_id == admin_role_id:
+            flash("invalid field permission update", "warning")
+            return redirect(url_for("admin.field_permissions"))
+        for actual_field in _actual_fields(table_fields, field_name):
+            if actual_field in SYSTEM_FIELDS:
+                delete_field_permission(role_id, table_name, actual_field)
+                continue
+            if access_level < 10:
+                delete_field_permission(role_id, table_name, actual_field)
+                continue
+            upsert_field_permission(role_id, table_name, actual_field, access_level, description)
         log_vehicle_action(
             None,
             actor=get_current_user().username,
             action_type="field_permission_update",
             action_detail={
-                "permission_id": permission_id,
+                "role_id": role_id,
+                "table_name": table_name,
+                "field_name": field_name,
                 "access_level": access_level,
-                "min_role_code": min_role_code,
-                "is_visible": is_visible,
-                "is_editable": is_editable,
             },
             source_module="admin",
         )
