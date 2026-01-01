@@ -174,10 +174,10 @@ CREATE TABLE vehicle_media (
 
   vehicle_id INT NOT NULL,
   uploaded_by INT NOT NULL,
-
+  
   file_type ENUM('photo','legal_doc') NOT NULL,
   file_path VARCHAR(255) NOT NULL,
-
+  is_primary tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否为车辆代表图(封面图)',
   uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY (id),
@@ -185,7 +185,7 @@ CREATE TABLE vehicle_media (
   KEY idx_vf_vehicle_id (vehicle_id),
   KEY idx_vf_vehicle_type (vehicle_id, file_type),
   KEY idx_vf_uploaded_by (uploaded_by),
-
+  
   CONSTRAINT fk_vf_vehicle
     FOREIGN KEY (vehicle_id)
     REFERENCES vehicle(id)
