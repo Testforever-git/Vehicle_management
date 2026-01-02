@@ -311,16 +311,19 @@ admin角色不需要配置，默认对所有用户所有表所有字段有可见
 表格联动:
 考虑到每次增加/删除/改动字段时，vehicle_field_permission也需要联动修改。
 UI上设置字段权限时，table_name/field_name从 field_catalog表格读取，role name从role表获取。 均为下拉框选择。 table_name没有选中的时候，field_name为空。
+is_audited 字段决定table_name，field_name是否被 audit_log审计。
 
-CREATE TABLE IF NOT EXISTS field_catalog (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  table_name VARCHAR(64) NOT NULL,
-  field_name VARCHAR(64) NOT NULL,
-  data_type VARCHAR(64) NOT NULL,
-  is_nullable TINYINT(1) NOT NULL,
-  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_table_field (table_name, field_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `field_catalog` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `table_name` varchar(64) NOT NULL,
+  `field_name` varchar(64) NOT NULL,
+  `data_type` varchar(64) NOT NULL,
+  `is_nullable` tinyint(1) NOT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `is_audited` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否参与审计：字段级 / 表级(__TABLE__)',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_table_field` (`table_name`,`field_name`)
+) ENGINE=InnoDB AUTO_INCREMENT=9458 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
 
 每次启动UI去设置字段权限之前，用下面的命令刷新field_catalog表。
 REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)
