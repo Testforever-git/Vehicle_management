@@ -67,6 +67,11 @@
             </option>
           {% endfor %}
         </select>
+        <label class="form-label ac-field-label mb-0">{{ t('admin_field_permissions.per_page_label') }}</label>
+        <select class="form-select fp-select" name="per_page" onchange="this.form.submit()">
+          <option value="20" {% if pagination.per_page == 20 %}selected{% endif %}>20</option>
+          <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+        </select>
       </form>
       <button class="btn btn-outline-danger"
               form="field-permissions-list-form"
@@ -82,6 +87,9 @@
         {{ t('admin_field_permissions.save') }}
       </button>
     </div>
+  </div>
+  <div class="d-flex align-items-center mb-2">
+    <span class="ac-text-meta">{{ t('admin_field_permissions.total') }}: {{ pagination.total }}</span>
   </div>
   <form method="post"
         action="{{ url_for('admin.update_field_permissions', lang=lang) }}"
@@ -137,11 +145,31 @@
             <tr>
               <td colspan="6" class="text-muted">{{ t('admin_field_permissions.empty') }}</td>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </form>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="ac-text-meta">
+    {{ t('admin_field_permissions.page_label') }} {{ pagination.page }} / {{ pagination.total_pages }}
+  </span>
+  <ul class="pagination mb-0">
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link"
+         href="{{ url_for('admin.field_permissions', lang=lang, page=pagination.page-1, per_page=pagination.per_page, role_id=selected_role_id) }}">
+        {{ t('admin_field_permissions.prev') }}
+      </a>
+    </li>
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link"
+         href="{{ url_for('admin.field_permissions', lang=lang, page=pagination.page+1, per_page=pagination.per_page, role_id=selected_role_id) }}">
+        {{ t('admin_field_permissions.next') }}
+      </a>
+    </li>
+  </ul>
+</nav>
 </div>
 <style>
   .field-permissions-table thead th {
