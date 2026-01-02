@@ -13,4 +13,5 @@
 .ac-field-readonly .readonly { padding:.35rem .5rem; background:#f8f9fa; border-radius:.35rem; }
 
 .ac-brand-logo { height: 36px; width: auto; margin-right: .5rem; }
+.ac-section-image { height: 170px; object-fit: cover; }
 .ac-announcement-body { min-height: 120px; background: #f8f9fa; border: 1px dashed #dee2e6; border-radius: .5rem; }
