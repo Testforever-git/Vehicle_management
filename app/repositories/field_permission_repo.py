@@ -1,4 +1,4 @@
-from ..db.mysql import fetch_all, execute
+from ..db.mysql import fetch_all, fetch_one, execute
 
 
 def list_field_permissions(role_id: int):
@@ -21,6 +21,15 @@ def list_field_permissions_admin():
     )
 
 
+def field_permission_exists(role_id: int, table_name: str, field_name: str) -> bool:
+    row = fetch_one(
+        "SELECT id FROM vehicle_field_permission\n"
+        "WHERE role_id = %s AND table_name = %s AND field_name = %s",
+        (role_id, table_name, field_name),
+    )
+    return row is not None
+
+
 def list_field_catalog():
     return fetch_all(
         "SELECT table_name, field_name\n"
@@ -30,6 +39,10 @@ def list_field_catalog():
 
 
 def refresh_field_catalog():
+    execute(
+        "DELETE FROM field_catalog\n"
+        "WHERE table_name IN ('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role')"
+    )
     execute(
         "REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)\n"
         "SELECT table_name, column_name, data_type, (is_nullable = 'YES')\n"
