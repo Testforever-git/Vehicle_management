@@ -117,6 +117,14 @@ def _load_year_conversion():
             data = yaml.safe_load(f) or {}
     except FileNotFoundError:
         data = {}
+    if isinstance(data, str):
+        parsed = {}
+        for line in data.splitlines():
+            if not line.strip() or ":" not in line:
+                continue
+            ad_year, era_year = line.split(":", 1)
+            parsed[ad_year.strip()] = era_year.strip()
+        data = parsed
     ad_to_era = {}
     era_to_ad = {}
     for ad_year, era_year in data.items():
