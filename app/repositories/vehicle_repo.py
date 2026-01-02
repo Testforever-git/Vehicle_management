@@ -156,6 +156,24 @@ def list_vehicles(filters=None, page=1, per_page=20):
     return rows, total
 
 
+def get_status_counts():
+    if not _vehicle_status_available():
+        return {"available": 0, "rented": 0, "maintenance": 0}
+    sql = """
+    SELECT status, COUNT(1) as total
+    FROM vehicle_status
+    WHERE status IN ('available', 'rented', 'maintenance')
+    GROUP BY status
+    """
+    rows = fetch_all(sql)
+    counts = {"available": 0, "rented": 0, "maintenance": 0}
+    for row in rows:
+        status = row.get("status")
+        if status in counts:
+            counts[status] = row.get("total") or 0
+    return counts
+
+
 def get_vehicle_i18n(vehicle_id: int):
     table_name = _vehicle_view_name()
     sql = f"""
