@@ -17,8 +17,6 @@ jp:
     model_id: "モデル"
     color_id: "カラー"
     model_year_ad: "年式（西暦）"
-    model_year_era: "年号"
-    model_year_era_year: "年号年"
     type_designation_code: "型式指定番号"
     classification_number: "類別区分番号"
     engine_code: "エンジンコード"
@@ -43,6 +41,7 @@ jp:
   messages:
     vin_required: "VINは必須です"
     vin_exists: "VINは既に存在します"
+  year_era_label: "和暦"
 cn:
   page_title_edit: "车辆编辑"
   page_title_new: "新增车辆"
@@ -62,8 +61,6 @@ cn:
     model_id: "型号"
     color_id: "颜色"
     model_year_ad: "公历年份"
-    model_year_era: "年号"
-    model_year_era_year: "年号年"
     type_designation_code: "型式指定号"
     classification_number: "分类号码"
     engine_code: "发动机编号"
@@ -88,3 +85,4 @@ cn:
   messages:
     vin_required: "VIN 为必填项"
     vin_exists: "VIN 已存在"
+  year_era_label: "和历"
