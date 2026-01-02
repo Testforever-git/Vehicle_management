@@ -349,7 +349,10 @@ def update_field_permissions():
             if not role_id or not table_name or not field_name:
                 continue
             table_fields = catalog_map.get(table_name, set())
-            for actual_field in _actual_fields(table_fields, field_name):
+            actual_fields = _actual_fields(table_fields, field_name)
+            if not actual_fields:
+                actual_fields = [field_name]
+            for actual_field in actual_fields:
                 delete_field_permission(role_id, table_name, actual_field)
                 log_vehicle_action(
                     None,
