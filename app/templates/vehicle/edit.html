@@ -289,6 +289,8 @@
 
   const brandSelect = form.querySelector('select[name="brand_id"]');
   const modelSelect = form.querySelector('select[name="model_id"]');
+  const etcTypeSelect = form.querySelector('select[name="etc_type"]');
+  const etcCardSelect = form.querySelector('select[name="has_etc_card"]');
 
   function filterModels() {
     if (!brandSelect || !modelSelect) {
@@ -318,6 +320,27 @@
     brandSelect.addEventListener('change', filterModels);
   }
   filterModels();
+
+  function syncEtcCardState() {
+    if (!etcTypeSelect || !etcCardSelect) {
+      return;
+    }
+    const hasEtc = etcTypeSelect.value && etcTypeSelect.value !== 'none';
+    if (!hasEtc) {
+      etcCardSelect.value = '0';
+      etcCardSelect.disabled = true;
+    } else {
+      etcCardSelect.disabled = false;
+    }
+  }
+
+  if (etcTypeSelect) {
+    etcTypeSelect.addEventListener('change', () => {
+      syncEtcCardState();
+      updateDirtyState();
+    });
+  }
+  syncEtcCardState();
 
   function updateDirtyState() {
     formFields.forEach((field) => {

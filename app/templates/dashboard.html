@@ -7,6 +7,43 @@
   <div class="display-6">{{ total }}</div>
 </div>
 
+{% if inspection_alerts %}
+  <div class="card p-3 mt-3">
+    <div class="ac-title-sub">{{ t('dashboard.inspection_due_title') }}</div>
+    {% for item in inspection_alerts %}
+      <div class="border rounded p-2 mb-2 {% if item.is_urgent %}border-danger{% else %}border-warning{% endif %}">
+        <div class="fw-semibold">{{ item.vehicle_label }}</div>
+        <div class="small text-muted">
+          {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+        </div>
+        <div class="small">
+          {{ t('dashboard.inspection_due_yyyymm') }}: {{ item.due_yyyymm }}
+          {% if item.is_overdue %}
+            <span class="badge bg-danger ms-2">{{ t('dashboard.overdue') }}</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if insurance_alerts %}
+  <div class="card p-3 mt-3">
+    <div class="ac-title-sub">{{ t('dashboard.insurance_due_title') }}</div>
+    {% for item in insurance_alerts %}
+      <div class="border rounded p-2 mb-2 border-warning">
+        <div class="fw-semibold">{{ item.vehicle_label }}</div>
+        <div class="small text-muted">
+          {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+        </div>
+        <div class="small">
+          {{ t('dashboard.insurance_due_date') }}: {{ item.due_date }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
 {% if perms.can('vehicle','view') %}
 <div class="mt-3">
   <a class="btn btn-outline-secondary" href="{{ url_for('ui.vehicle_list', lang=lang) }}">

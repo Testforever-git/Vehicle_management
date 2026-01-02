@@ -1,6 +1,7 @@
 # app/blueprints/ui/routes.py
 import os
 import shutil
+from datetime import date
 
 import yaml
 
@@ -223,6 +224,16 @@ def _status_payload_from_form():
                 payload[name] = None
             else:
                 payload[name] = value
+    inspection_value = payload.get("inspection_due_yyyymm")
+    if inspection_value is not None:
+        try:
+            inspection_int = int(inspection_value)
+        except (TypeError, ValueError):
+            inspection_int = None
+        if inspection_int is not None:
+            current_yyyymm = _current_yyyymm(date.today())
+            if inspection_int < current_yyyymm:
+                payload["status"] = "inactive"
     return payload
 
 
@@ -299,6 +310,7 @@ def _load_master_data():
             {"value": "available", "label": "available", "is_active": True},
             {"value": "rented", "label": "rented", "is_active": True},
             {"value": "maintenance", "label": "maintenance", "is_active": True},
+            {"value": "inactive", "label": "inactive", "is_active": True},
         ],
         "etc_type": [
             {"value": "none", "label": "なし / 无", "is_active": True},
@@ -349,6 +361,32 @@ def _t(key: str) -> str:
     return _translator.t(lang, key)
 
 
+def _add_months(base_date: date, months: int) -> date:
+    month = base_date.month - 1 + months
+    year = base_date.year + month // 12
+    month = month % 12 + 1
+    days_in_month = [
+        31,
+        29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ]
+    day = min(base_date.day, days_in_month[month - 1])
+    return date(year, month, day)
+
+
+def _current_yyyymm(current_date: date) -> int:
+    return current_date.year * 100 + current_date.month
+
+
 @bp.get("/vehicle/image/<vin>/<category>/<filename>")
 def vehicle_image(vin: str, category: str, filename: str):
     if not _require_login():
@@ -376,8 +414,68 @@ def vehicle_image(vin: str, category: str, filename: str):
 def dashboard():
     if not _require_login():
         return redirect(url_for("auth.login"))
+    current_date = date.today()
+    current_yyyymm = _current_yyyymm(current_date)
+    inspection_warn_yyyymm = _current_yyyymm(_add_months(current_date, 2))
+    inspection_urgent_yyyymm = _current_yyyymm(_add_months(current_date, 1))
+    insurance_warn_date = _add_months(current_date, 1)
+
+    from ...repositories.vehicle_repo import (
+        list_due_inspections,
+        list_due_insurance,
+        set_inactive_for_overdue_inspections,
+    )
+
+    set_inactive_for_overdue_inspections(current_yyyymm)
+    inspection_due_list = list_due_inspections(current_yyyymm, inspection_warn_yyyymm)
+    insurance_due_list = list_due_insurance(current_date, insurance_warn_date)
+
+    lang = request.args.get("lang") or session.get("lang") or "jp"
+
+    def _vehicle_label(row):
+        brand = row.get("brand_jp") if lang == "jp" else row.get("brand_cn")
+        model = row.get("model_jp") if lang == "jp" else row.get("model_cn")
+        return f"{brand or '-'} / {model or '-'}"
+
+    inspection_alerts = []
+    for row in inspection_due_list:
+        due_yyyymm = row.get("inspection_due_yyyymm")
+        if due_yyyymm is None:
+            continue
+        try:
+            due_yyyymm_int = int(due_yyyymm)
+        except (TypeError, ValueError):
+            continue
+        inspection_alerts.append(
+            {
+                "vehicle_label": _vehicle_label(row),
+                "vin": row.get("vin"),
+                "plate_no": row.get("plate_no"),
+                "due_yyyymm": due_yyyymm_int,
+                "is_overdue": due_yyyymm_int < current_yyyymm,
+                "is_urgent": due_yyyymm_int <= inspection_urgent_yyyymm,
+            }
+        )
+
+    insurance_alerts = []
+    for row in insurance_due_list:
+        insurance_alerts.append(
+            {
+                "vehicle_label": _vehicle_label(row),
+                "vin": row.get("vin"),
+                "plate_no": row.get("plate_no"),
+                "due_date": row.get("insurance_due_date"),
+            }
+        )
+
     _, total = list_vehicles()
-    return render_template("dashboard.html", active_menu="dashboard", total=total)
+    return render_template(
+        "dashboard.html",
+        active_menu="dashboard",
+        total=total,
+        inspection_alerts=inspection_alerts,
+        insurance_alerts=insurance_alerts,
+    )
 
 
 @bp.route("/vehicle/list", methods=["GET", "POST"])
@@ -562,6 +660,8 @@ def vehicle_edit(vehicle_id: int):
         payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
         ensure_vehicle_qr(vehicle_id)
+        if payload.get("etc_type") == "none":
+            status_payload["has_etc_card"] = "0"
         if status_payload:
             status_payload["updated_by"] = get_current_user().user_id
             upsert_status(vehicle_id, status_payload)
@@ -639,6 +739,8 @@ def vehicle_new():
         created = get_vehicle_by_vin(vin)
         if created:
             ensure_vehicle_qr(created["id"])
+            if payload.get("etc_type") == "none":
+                status_payload["has_etc_card"] = "0"
             if status_payload:
                 status_payload["updated_by"] = get_current_user().user_id
                 upsert_status(created["id"], status_payload)
