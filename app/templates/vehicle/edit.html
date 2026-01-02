@@ -10,7 +10,37 @@
   <div class="row g-3">
     {% for field in vehicle_fields %}
       <div class="{{ 'col-12' if field.type == 'textarea' else 'col-md-4' }}">
-        {% if field.type == 'select' %}
+        {% if field.name == 'model_year_ad' %}
+          {% set access_level = field_perm.get_access_level('vehicle', field.name) %}
+          {% if access_level < 10 %}
+            <div class="mb-3 ac-field ac-field-readonly">
+              <label class="form-label ac-field-label">{{ t(field.label_key) }}</label>
+              <div class="ac-field-value readonly">***</div>
+            </div>
+          {% elif access_level < 20 %}
+            <div class="mb-3 ac-field ac-field-readonly">
+              <label class="form-label ac-field-label">{{ t(field.label_key) }}</label>
+              <div class="ac-field-value readonly">{{ vehicle[field.name] if vehicle[field.name] else '-' }}</div>
+            </div>
+          {% else %}
+            <div class="mb-3 ac-field ac-field-editable">
+              <label class="form-label ac-field-label">{{ t(field.label_key) }}</label>
+              <div class="input-group">
+                <input class="form-control ac-input"
+                       type="text"
+                       id="model-year-display"
+                       value="{{ vehicle[field.name] or '' }}">
+                <span class="input-group-text">
+                  <input class="form-check-input mt-0" type="checkbox" id="model-year-era-toggle">
+                  <label class="form-check-label ms-1" for="model-year-era-toggle">
+                    {{ t('vehicle_edit.year_era_label') }}
+                  </label>
+                </span>
+              </div>
+              <input type="hidden" name="model_year_ad" id="model-year-ad" value="{{ vehicle[field.name] or '' }}">
+            </div>
+          {% endif %}
+        {% elif field.type == 'select' %}
           {{ select_field('vehicle', field.name, t(field.label_key), field.name, vehicle[field.name], master_data[field.options_key]) }}
         {% else %}
           {{ input_field('vehicle', field.name, t(field.label_key), field.name, vehicle[field.name], field.type) }}
@@ -205,6 +235,55 @@
     field.dataset.initialValue = field.value || '';
   });
   updateDirtyState();
+
+  const yearConversion = {{ year_conversion | tojson }};
+  const yearToggle = document.getElementById('model-year-era-toggle');
+  const yearDisplay = document.getElementById('model-year-display');
+  const yearHidden = document.getElementById('model-year-ad');
+
+  function normalizeYear(value) {
+    return (value || '').trim();
+  }
+
+  function syncYearHidden() {
+    if (!yearDisplay || !yearHidden) {
+      return;
+    }
+    const displayValue = normalizeYear(yearDisplay.value);
+    if (yearToggle && yearToggle.checked) {
+      yearHidden.value = yearConversion.era_to_ad?.[displayValue] || '';
+    } else {
+      yearHidden.value = displayValue;
+    }
+  }
+
+  function syncYearDisplay() {
+    if (!yearDisplay || !yearHidden) {
+      return;
+    }
+    const hiddenValue = normalizeYear(yearHidden.value);
+    if (yearToggle && yearToggle.checked) {
+      yearDisplay.value = yearConversion.ad_to_era?.[hiddenValue] || hiddenValue;
+    } else {
+      yearDisplay.value = hiddenValue;
+    }
+  }
+
+  if (yearDisplay) {
+    yearDisplay.addEventListener('input', () => {
+      syncYearHidden();
+    });
+  }
+
+  if (yearToggle) {
+    yearToggle.addEventListener('change', () => {
+      syncYearHidden();
+      syncYearDisplay();
+      updateDirtyState();
+    });
+  }
+
+  syncYearDisplay();
 
   const brandSelect = form.querySelector('select[name="brand_id"]');
   const modelSelect = form.querySelector('select[name="model_id"]');

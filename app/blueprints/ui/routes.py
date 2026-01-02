@@ -2,6 +2,8 @@
 import os
 import shutil
 
+import yaml
+
 from flask import render_template, redirect, url_for, abort, request, flash, send_from_directory, session
 from . import bp
 from ...i18n import Translator
@@ -47,8 +49,6 @@ VEHICLE_FIELDS = [
     {"name": "model_id", "label_key": "vehicle_edit.fields.model_id", "type": "select", "options_key": "models"},
     {"name": "color_id", "label_key": "vehicle_edit.fields.color_id", "type": "select", "options_key": "colors"},
     {"name": "model_year_ad", "label_key": "vehicle_edit.fields.model_year_ad", "type": "number"},
-    {"name": "model_year_era", "label_key": "vehicle_edit.fields.model_year_era", "type": "text"},
-    {"name": "model_year_era_year", "label_key": "vehicle_edit.fields.model_year_era_year", "type": "number"},
     {"name": "type_designation_code", "label_key": "vehicle_edit.fields.type_designation_code", "type": "text"},
     {"name": "classification_number", "label_key": "vehicle_edit.fields.classification_number", "type": "text"},
     {"name": "engine_code", "label_key": "vehicle_edit.fields.engine_code", "type": "text"},
@@ -80,7 +80,6 @@ NULLABLE_NUMERIC_FIELDS = {
     "model_id",
     "color_id",
     "model_year_ad",
-    "model_year_era_year",
     "displacement_cc",
     "purchase_price",
 }
@@ -94,10 +93,43 @@ PHOTO_DIR_CATEGORY = "vehicle_photo"
 LEGACY_PHOTO_DIR_CATEGORY = "Vehicle_photo"
 
 _translator = Translator()
+_YEAR_CONVERSION_CACHE = None
 
 
 def _image_base_dir():
     return os.path.join(os.getcwd(), "db", "image")
+
+
+def _load_year_conversion():
+    global _YEAR_CONVERSION_CACHE
+    if _YEAR_CONVERSION_CACHE is not None:
+        return _YEAR_CONVERSION_CACHE
+    conversion_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "..",
+        "static",
+        "i18n",
+        "convert_year.yaml",
+    )
+    try:
+        with open(conversion_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        data = {}
+    ad_to_era = {}
+    era_to_ad = {}
+    for ad_year, era_year in data.items():
+        if not isinstance(ad_year, str) or not isinstance(era_year, str):
+            continue
+        ad_clean = ad_year.strip()
+        if ad_clean.endswith("年"):
+            ad_clean = ad_clean[:-1]
+        era_clean = era_year.strip()
+        ad_to_era[ad_clean] = era_clean
+        era_to_ad[era_clean] = ad_clean
+    _YEAR_CONVERSION_CACHE = {"ad_to_era": ad_to_era, "era_to_ad": era_to_ad}
+    return _YEAR_CONVERSION_CACHE
 
 
 def _safe_vin(vin: str) -> str:
@@ -524,6 +556,7 @@ def vehicle_edit(vehicle_id: int):
         status_fields=STATUS_FIELDS,
         status_data=status,
         master_data=master_data,
+        year_conversion=_load_year_conversion(),
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
         has_primary_photo=has_primary_photo,
@@ -600,6 +633,7 @@ def vehicle_new():
         status_fields=STATUS_FIELDS,
         status_data={},
         master_data=_load_master_data(),
+        year_conversion=_load_year_conversion(),
         legal_docs=[],
         vehicle_photos=[],
         has_primary_photo=False,

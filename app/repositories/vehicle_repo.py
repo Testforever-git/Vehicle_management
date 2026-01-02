@@ -9,8 +9,6 @@ VEHICLE_COLUMNS = [
     "model_id",
     "color_id",
     "model_year_ad",
-    "model_year_era",
-    "model_year_era_year",
     "type_designation_code",
     "classification_number",
     "engine_code",
