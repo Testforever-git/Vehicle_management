@@ -85,6 +85,7 @@
             <th scope="col">{{ t('admin_audit.actor') }}</th>
             <th scope="col">{{ t('admin_audit.action_type') }}</th>
             <th scope="col">{{ t('admin_audit.message') }}</th>
+            <th scope="col">{{ t('admin_audit.fields') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -93,11 +94,12 @@
               <td>{{ log.created_at }}</td>
               <td>{{ log.actor_label }}</td>
               <td>{{ log.action_type }}</td>
-              <td>{{ log.message or '-' }}</td>
+              <td class="audit-ellipsis" title="{{ log.message or '-' }}">{{ log.message or '-' }}</td>
+              <td class="audit-ellipsis" title="{{ log.fields or '-' }}">{{ log.fields or '-' }}</td>
             </tr>
           {% else %}
             <tr>
-              <td colspan="4" class="text-muted">{{ t('admin_audit.empty') }}</td>
+              <td colspan="5" class="text-muted">{{ t('admin_audit.empty') }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -128,6 +130,12 @@
   <style>
     .audit-log-table thead th {
       background-color: #f3f5f8;
+    }
+    .audit-ellipsis {
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   </style>
   <script>

@@ -58,6 +58,21 @@ def _audit_changes(
     table_audited, audited_fields = get_audit_config(table_name)
     if not table_audited and not audited_fields:
         return
+    if action_type in {"insert", "delete"}:
+        current_user = get_current_user()
+        create_audit_log(
+            vehicle_id,
+            actor="user",
+            actor_id=current_user.user_id,
+            action_type=action_type,
+            action_detail={
+                "table": table_name,
+                "pk": pk,
+                "op": action_type,
+                "message": message,
+            },
+        )
+        return
     old_values = old_values or {}
     def _normalize_value(value):
         if value is None or value == "":
@@ -560,6 +575,16 @@ def vehicle_list():
         ids = [int(v) for v in request.form.getlist("vehicle_ids") if v.isdigit()]
         if action == "delete" and ids:
             delete_vehicles(ids)
+            for vehicle_id in ids:
+                _audit_changes(
+                    "vehicle",
+                    {"id": vehicle_id},
+                    {},
+                    {},
+                    vehicle_id,
+                    "delete",
+                    "删除 vehicle",
+                )
             flash(_t("vehicle_list.messages.deleted"), "success")
         return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))
 

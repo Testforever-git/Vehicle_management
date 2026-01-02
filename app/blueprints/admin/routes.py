@@ -387,8 +387,11 @@ def update_audit_log_settings():
         update_audit_flags(table_name, sorted(audited_actual_fields), True)
         update_audit_flags(table_name, sorted(unaudited_fields), False)
         update_table_audit_flag(table_name, False)
-        detail_fields = selected_fields
-        message = f"更新审计配置: {table_name} 字段({', '.join(selected_fields) or '无'})"
+        detail_fields = {
+            "audited": selected_fields,
+            "unaudited": sorted(unaudited_fields),
+        }
+        message = f"更新审计配置: {table_name} 字段"
 
     current_user = get_current_user()
     create_audit_log(
