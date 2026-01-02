@@ -40,20 +40,24 @@
     <div class="card p-3 h-100">
       <div class="ac-title-sub">{{ t('dashboard.inspection_due_title') }}</div>
       {% if inspection_alerts %}
-        {% for item in inspection_alerts %}
-          <div class="border rounded p-2 mb-2 {% if item.is_urgent %}border-danger{% else %}border-warning{% endif %}">
-            <div class="fw-semibold">{{ item.vehicle_label }}</div>
-            <div class="small text-muted">
-              {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+        <div class="row g-2">
+          {% for item in inspection_alerts %}
+            <div class="col-12 col-md-4">
+              <div class="border rounded p-2 h-100 {% if item.is_urgent %}border-danger{% else %}border-warning{% endif %}">
+                <div class="fw-semibold">{{ item.vehicle_label }}</div>
+                <div class="small text-muted">
+                  {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+                </div>
+                <div class="small">
+                  {{ t('dashboard.inspection_due_yyyymm') }}: {{ item.due_yyyymm }}
+                  {% if item.is_overdue %}
+                    <span class="badge bg-danger ms-2">{{ t('dashboard.overdue') }}</span>
+                  {% endif %}
+                </div>
+              </div>
             </div>
-            <div class="small">
-              {{ t('dashboard.inspection_due_yyyymm') }}: {{ item.due_yyyymm }}
-              {% if item.is_overdue %}
-                <span class="badge bg-danger ms-2">{{ t('dashboard.overdue') }}</span>
-              {% endif %}
-            </div>
-          </div>
-        {% endfor %}
+          {% endfor %}
+        </div>
       {% else %}
         <div class="text-muted small">{{ t('dashboard.no_alerts') }}</div>
       {% endif %}
@@ -64,17 +68,21 @@
     <div class="card p-3 h-100">
       <div class="ac-title-sub">{{ t('dashboard.insurance_due_title') }}</div>
       {% if insurance_alerts %}
-        {% for item in insurance_alerts %}
-          <div class="border rounded p-2 mb-2 border-warning">
-            <div class="fw-semibold">{{ item.vehicle_label }}</div>
-            <div class="small text-muted">
-              {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+        <div class="row g-2">
+          {% for item in insurance_alerts %}
+            <div class="col-12 col-md-4">
+              <div class="border rounded p-2 h-100 border-warning">
+                <div class="fw-semibold">{{ item.vehicle_label }}</div>
+                <div class="small text-muted">
+                  {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+                </div>
+                <div class="small">
+                  {{ t('dashboard.insurance_due_date') }}: {{ item.due_date }}
+                </div>
+              </div>
             </div>
-            <div class="small">
-              {{ t('dashboard.insurance_due_date') }}: {{ item.due_date }}
-            </div>
-          </div>
-        {% endfor %}
+          {% endfor %}
+        </div>
       {% else %}
         <div class="text-muted small">{{ t('dashboard.no_alerts') }}</div>
       {% endif %}
