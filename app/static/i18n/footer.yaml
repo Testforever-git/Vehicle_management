@@ -1,6 +1,12 @@
 jp:
   system_name: "Auto Connect · 車両管理システム"
-  copyright: "著作権保留 2025"
+  copyright: "著作権保留 2025 Autoconnect"
+  company_name: "会社名: Auto connect"
+  company_address: "住所: 千葉県市川市大野町2-698-7"
+  company_phone: "連絡先: 070-1548-6636"
 cn:
   system_name: "Auto Connect · 车辆管理系统"
-  copyright: "版权所有 2025"
+  copyright: "版权所有 2025 Autoconnect"
+  company_name: "公司名: Auto connect"
+  company_address: "地址: 千葉県市川市大野町2-698-7"
+  company_phone: "联系电话: 070-1548-6636"
