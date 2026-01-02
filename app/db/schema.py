@@ -84,8 +84,44 @@ def _create_tables():
             field_name VARCHAR(64) NOT NULL,
             data_type VARCHAR(64) NOT NULL,
             is_nullable TINYINT(1) NOT NULL,
+            is_audited TINYINT(1) NOT NULL DEFAULT 1,
             updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uq_table_field (table_name, field_name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+    execute(
+        """
+        ALTER TABLE field_catalog
+        ADD COLUMN IF NOT EXISTS is_audited TINYINT(1) NOT NULL DEFAULT 1
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            vehicle_id INT NULL,
+            actor ENUM('user','system') NOT NULL DEFAULT 'system',
+            actor_id INT NULL,
+            action_type ENUM('login','logout','insert','delete','update') NOT NULL,
+            action_detail JSON NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_audit_created_at (created_at),
+            KEY idx_audit_vehicle_id (vehicle_id),
+            KEY idx_audit_actor (actor, actor_id),
+            KEY idx_audit_action_type (action_type, created_at),
+            CONSTRAINT fk_audit_vehicle
+              FOREIGN KEY (vehicle_id) REFERENCES vehicle(id)
+              ON UPDATE CASCADE
+              ON DELETE SET NULL,
+            CONSTRAINT fk_audit_actor_user
+              FOREIGN KEY (actor_id) REFERENCES user(id)
+              ON UPDATE CASCADE
+              ON DELETE SET NULL,
+            CONSTRAINT chk_audit_action_detail_json
+              CHECK (JSON_VALID(action_detail))
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
