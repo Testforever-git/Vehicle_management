@@ -54,6 +54,7 @@ def _audit_changes(
     action_type: str,
     message: str,
 ):
+    skip_fields = {"updated_by"}
     table_audited, audited_fields = get_audit_config(table_name)
     if not table_audited and not audited_fields:
         return
@@ -66,6 +67,8 @@ def _audit_changes(
         return str(value)
     changed_fields = {}
     for field_name, new_value in new_values.items():
+        if field_name in skip_fields:
+            continue
         if not table_audited and field_name not in audited_fields:
             continue
         old_value = old_values.get(field_name)
