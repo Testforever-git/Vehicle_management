@@ -1,8 +1,11 @@
-<footer class="py-3 border-top mt-4">
+<footer class="py-4 border-top mt-4">
   <div class="container text-muted small">
-    {{ t('footer.system_name') }}
-  </div>
-  <div>
-    {{ t('footer.copyright') }}
+    <div class="row g-2 text-center text-md-start">
+      <div class="col-12 col-md">{{ t('footer.system_name') }}</div>
+      <div class="col-12 col-md fw-semibold">{{ t('footer.copyright') }}</div>
+      <div class="col-12 col-md">{{ t('footer.company_name') }}</div>
+      <div class="col-12 col-md">{{ t('footer.company_address') }}</div>
+      <div class="col-12 col-md">{{ t('footer.company_phone') }}</div>
+    </div>
   </div>
 </footer>
