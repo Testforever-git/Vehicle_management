@@ -25,14 +25,12 @@
 - UNIQUE(vin)
 
 ### Fields (summary)
- vehicle | CREATE TABLE `vehicle` (
+  vehicle | CREATE TABLE `vehicle` (
   `id` int NOT NULL AUTO_INCREMENT,
   `brand_id` int NOT NULL,
   `model_id` int NOT NULL,
   `color_id` int DEFAULT NULL,
   `model_year_ad` smallint unsigned DEFAULT NULL COMMENT 'Gregorian year, e.g. 2021',
-  `model_year_era` varchar(16) DEFAULT NULL COMMENT 'showa/heisei/reiwa',
-  `model_year_era_year` smallint unsigned DEFAULT NULL COMMENT 'e.g. reiwa 3 -> 3',
   `plate_no` varchar(64) DEFAULT NULL,
   `vin` varchar(64) NOT NULL,
   `type_designation_code` varchar(64) DEFAULT NULL,
@@ -71,9 +69,8 @@
   CONSTRAINT `fk_vehicle_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`),
   CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
-  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `chk_model_year_era_year` CHECK (((`model_year_era_year` is null) or (`model_year_era_year` between 1 and 99)))
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
 2.1 Master Data（主数据/字典）规则
 md_brand（品牌）
@@ -107,9 +104,7 @@ drive_type_code：引用 md_enum(enum_type='drive_type')
 
 2.3 年份规则
 model_year_ad：公历年份（统计/排序用）
-model_year_era：年号（showa/heisei/reiwa）
-model_year_era_year：年号年（1~99）
-录入可只填其中一套，推荐录入时：输入和历则自动换算并写入 model_year_ad
+通过app\static\i18n\convert_year.yaml来转换。
 
 2.4 查询显示（中日双语）
 显示品牌：join md_brand
@@ -156,14 +151,25 @@ LEFT JOIN md_enum dt ON dt.enum_type='drive_type' AND dt.enum_code=v.drive_type_
 - UNIQUE(vehicle_id)
 
 ### Fields
-- id (PK)
-- vehicle_id (FK -> vehicle.id)
-- status (available/rented/maintenance/reserved/inactive)
-- mileage, fuel_level, speed, engine_on, alcohol_check_passed
-- location_lat/lng, location_desc
-- update_source (manual/rental/maintenance/gps/alcohol_check/system)
-- update_time
-- ext_json
+vehicle_status | CREATE TABLE `vehicle_status` (
+  `vehicle_id` int NOT NULL,
+  `status` varchar(32) DEFAULT NULL COMMENT 'available/rented/maintenance/reserved/inactive',
+  `mileage` int DEFAULT NULL,
+  `fuel_level` int DEFAULT NULL COMMENT '0-100',
+  `location_desc` varchar(255) DEFAULT NULL,
+  `update_time` datetime DEFAULT NULL,
+  `updated_by` int DEFAULT NULL COMMENT '最后更新该状态的用户ID',
+  `inspection_due_yyyymm` int unsigned DEFAULT NULL COMMENT '車検満了年月 (YYYYMM, e.g. 202602)',
+  `insurance_due_date` date DEFAULT NULL COMMENT '任意保険満了日 (YYYY-MM-DD)',
+  PRIMARY KEY (`vehicle_id`),
+  KEY `idx_vehicle_status_updated_by` (`updated_by`),
+  KEY `idx_inspection_due_yyyymm` (`inspection_due_yyyymm`),
+  KEY `idx_insurance_due_date` (`insurance_due_date`),
+  CONSTRAINT `fk_vehicle_status_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_vehicle_status_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicle` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+status信息可以被人工修改，也可以被外部设备修改。（比如GPS或者其他设备)
 
 ## 4. vehicle_media
 ### Purpose
