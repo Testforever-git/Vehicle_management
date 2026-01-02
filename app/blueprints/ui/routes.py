@@ -37,10 +37,52 @@ from ...repositories.vehicle_media_repo import (
 )
 from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...repositories.qr_repo import ensure_vehicle_qr, get_vehicle_qr_by_vehicle_id
+from ...repositories.audit_log_repo import create_audit_log
+from ...repositories.audit_setting_repo import get_audit_config
 
 def _require_login():
     u = get_current_user()
     return u.is_authenticated
+
+
+def _audit_changes(
+    table_name: str,
+    pk: dict,
+    old_values: dict | None,
+    new_values: dict,
+    vehicle_id: int | None,
+    action_type: str,
+    message: str,
+):
+    table_audited, audited_fields = get_audit_config(table_name)
+    if not table_audited and not audited_fields:
+        return
+    old_values = old_values or {}
+    changed_fields = {}
+    for field_name, new_value in new_values.items():
+        if not table_audited and field_name not in audited_fields:
+            continue
+        old_value = old_values.get(field_name)
+        if old_value != new_value:
+            changed_fields[field_name] = {"old": old_value, "new": new_value}
+    if not changed_fields:
+        return
+    if action_type == "update":
+        message = f"{message}({', '.join(changed_fields.keys())})"
+    current_user = get_current_user()
+    create_audit_log(
+        vehicle_id,
+        actor="user",
+        actor_id=current_user.user_id,
+        action_type=action_type,
+        action_detail={
+            "table": table_name,
+            "pk": pk,
+            "op": action_type,
+            "fields": changed_fields,
+            "message": message,
+        },
+    )
 
 
 VEHICLE_FIELDS = [
@@ -604,6 +646,8 @@ def vehicle_edit(vehicle_id: int):
         abort(404)
 
     if request.method == "POST":
+        old_vehicle = dict(vehicle)
+        old_status = get_status(vehicle_id) or {}
         payload = _payload_from_form()
         status_payload = _status_payload_from_form()
         vin = (payload.get("vin") or vehicle.get("vin") or "").strip()
@@ -676,12 +720,30 @@ def vehicle_edit(vehicle_id: int):
 
         payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
+        _audit_changes(
+            "vehicle",
+            {"id": vehicle_id},
+            old_vehicle,
+            payload,
+            vehicle_id,
+            "update",
+            "修改 vehicle 字段",
+        )
         ensure_vehicle_qr(vehicle_id)
         if payload.get("etc_type") == "none":
             status_payload["has_etc_card"] = "0"
         if status_payload:
             status_payload["updated_by"] = get_current_user().user_id
             upsert_status(vehicle_id, status_payload)
+            _audit_changes(
+                "vehicle_status",
+                {"vehicle_id": vehicle_id},
+                old_status,
+                status_payload,
+                vehicle_id,
+                "update",
+                "修改 vehicle_status 字段",
+            )
         log_vehicle_action(
             vehicle_id,
             actor=get_current_user().username,
@@ -761,6 +823,15 @@ def vehicle_new():
             if status_payload:
                 status_payload["updated_by"] = get_current_user().user_id
                 upsert_status(created["id"], status_payload)
+                _audit_changes(
+                    "vehicle_status",
+                    {"vehicle_id": created["id"]},
+                    {},
+                    status_payload,
+                    created["id"],
+                    "insert",
+                    "新增 vehicle_status",
+                )
             create_vehicle_media(
                 created["id"],
                 "legal_doc",
@@ -779,6 +850,15 @@ def vehicle_new():
                 action_type="vehicle_create",
                 action_detail={"vin": vin, "legal": new_legal, "photos": new_photos},
                 source_module="vehicle_new",
+            )
+            _audit_changes(
+                "vehicle",
+                {"id": created["id"]},
+                {},
+                payload,
+                created["id"],
+                "insert",
+                "新增 vehicle",
             )
             return redirect(url_for("ui.vehicle_detail", vehicle_id=created["id"], lang=request.args.get("lang")))
         return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))

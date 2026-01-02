@@ -391,7 +391,7 @@ def update_audit_log_settings():
     create_audit_log(
         None,
         actor="user",
-        actor_id=current_user.id,
+        actor_id=current_user.user_id,
         action_type="update",
         action_detail={
             "table": "field_catalog",
