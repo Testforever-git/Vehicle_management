@@ -25,7 +25,7 @@
 - UNIQUE(vin)
 
 ### Fields (summary)
-  vehicle | CREATE TABLE `vehicle` (
+ vehicle | CREATE TABLE `vehicle` (
   `id` int NOT NULL AUTO_INCREMENT,
   `brand_id` int NOT NULL,
   `model_id` int NOT NULL,
@@ -59,6 +59,7 @@
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `updated_by` int DEFAULT NULL,
+  `etc_type` enum('none','etc1','etc2') NOT NULL DEFAULT 'none' COMMENT 'ETC设备类型: none=无, etc1=ETC1.0, etc2=ETC2.0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_vehicle_vin` (`vin`),
   KEY `idx_vehicle_plate_no` (`plate_no`),
@@ -161,6 +162,7 @@ vehicle_status | CREATE TABLE `vehicle_status` (
   `updated_by` int DEFAULT NULL COMMENT '最后更新该状态的用户ID',
   `inspection_due_yyyymm` int unsigned DEFAULT NULL COMMENT '車検満了年月 (YYYYMM, e.g. 202602)',
   `insurance_due_date` date DEFAULT NULL COMMENT '任意保険満了日 (YYYY-MM-DD)',
+  `has_etc_card` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否已插入ETC卡 (1=有卡，可直接使用ETC)',
   PRIMARY KEY (`vehicle_id`),
   KEY `idx_vehicle_status_updated_by` (`updated_by`),
   KEY `idx_inspection_due_yyyymm` (`inspection_due_yyyymm`),
