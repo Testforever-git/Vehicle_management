@@ -421,6 +421,7 @@ def dashboard():
     insurance_warn_date = _add_months(current_date, 1)
 
     from ...repositories.vehicle_repo import (
+        get_status_counts,
         list_due_inspections,
         list_due_insurance,
         set_inactive_for_overdue_inspections,
@@ -469,12 +470,28 @@ def dashboard():
         )
 
     _, total = list_vehicles()
+    status_counts = get_status_counts()
+    available_count = status_counts["available"]
+    rented_count = status_counts["rented"]
+    maintenance_count = status_counts["maintenance"]
+    status_total = available_count + rented_count + maintenance_count
+
+    def _ratio(value):
+        return round((value / status_total) * 100, 1) if status_total else 0
+
+    status_ratios = {
+        "available": _ratio(available_count),
+        "rented": _ratio(rented_count),
+        "maintenance": _ratio(maintenance_count),
+    }
     return render_template(
         "dashboard.html",
         active_menu="dashboard",
         total=total,
         inspection_alerts=inspection_alerts,
         insurance_alerts=insurance_alerts,
+        status_counts=status_counts,
+        status_ratios=status_ratios,
     )
 
 
