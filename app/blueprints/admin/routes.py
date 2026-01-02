@@ -1,6 +1,7 @@
 from flask import render_template, redirect, url_for, request, flash
 from . import bp
 from ...repositories.field_permission_repo import (
+    field_permission_exists,
     list_field_catalog,
     list_field_permissions_admin,
     refresh_field_catalog,
@@ -168,6 +169,18 @@ def field_permissions():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
     refresh_field_catalog()
+    try:
+        page = int(request.args.get("page", "1") or 1)
+    except ValueError:
+        page = 1
+    if page < 1:
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", "20") or 20)
+    except ValueError:
+        per_page = 20
+    if per_page not in {20, 50}:
+        per_page = 20
     roles = list_roles()
     admin_role_id = _admin_role_id(roles)
     roles = [role for role in roles if role["role_code"] != "admin"]
@@ -215,15 +228,30 @@ def field_permissions():
         grouped_list = [
             item for item in grouped_list if str(item["role_id"]) == selected_role_id
         ]
+    total = len(grouped_list)
+    total_pages = max((total + per_page - 1) // per_page, 1)
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * per_page
+    end = start + per_page
+    paged_list = grouped_list[start:end]
     return render_template(
         "admin/field_permissions.html",
         active_menu="field_permissions",
-        field_permissions=grouped_list,
+        field_permissions=paged_list,
         roles=roles,
         field_catalog=logical_field_catalog,
         table_names=table_names,
         access_levels=[10, 20],
         selected_role_id=selected_role_id,
+        pagination={
+            "page": page,
+            "per_page": per_page,
+            "total": total,
+            "total_pages": total_pages,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+        },
     )
 
 
@@ -361,17 +389,26 @@ def update_field_permissions():
             field_names = _logical_fields_for_table(table_fields)
         else:
             field_names = [field_name]
+        actual_fields = []
         for logical_field in field_names:
             for actual_field in _actual_fields(table_fields, logical_field):
                 if actual_field in SYSTEM_FIELDS:
                     continue
-                upsert_field_permission(
-                    role_id,
-                    table_name,
-                    actual_field,
-                    access_level,
-                    description,
-                )
+                actual_fields.append(actual_field)
+        if any(
+            field_permission_exists(role_id, table_name, actual_field)
+            for actual_field in actual_fields
+        ):
+            flash("field permission already exists", "warning")
+            return redirect(url_for("admin.field_permissions"))
+        for actual_field in actual_fields:
+            upsert_field_permission(
+                role_id,
+                table_name,
+                actual_field,
+                access_level,
+                description,
+            )
         log_vehicle_action(
             None,
             actor=get_current_user().username,
