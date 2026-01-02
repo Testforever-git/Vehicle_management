@@ -2,7 +2,8 @@ from flask import render_template, request, redirect, url_for, flash, session
 from werkzeug.security import check_password_hash
 from . import bp
 from ...repositories.user_repo import get_user_by_username
-from ...security.users import login_user, logout
+from ...security.users import login_user, logout, get_current_user
+from ...repositories.audit_log_repo import create_audit_log
 
 
 @bp.get("/login")
@@ -25,6 +26,20 @@ def login_post():
         flash("invalid credentials", "danger")
         return redirect(url_for("auth.login"))
     login_user(user["id"])
+    create_audit_log(
+        None,
+        actor="user",
+        actor_id=user["id"],
+        action_type="login",
+        action_detail={
+            "op": "login",
+            "context": {
+                "ip": request.remote_addr,
+                "user_agent": request.headers.get("User-Agent"),
+            },
+            "message": "登录",
+        },
+    )
     next_url = session.pop("next_url", None)
     if next_url:
         return redirect(next_url)
@@ -33,5 +48,21 @@ def login_post():
 
 @bp.get("/logout")
 def logout_route():
+    current_user = get_current_user()
+    if current_user.is_authenticated:
+        create_audit_log(
+            None,
+            actor="user",
+            actor_id=current_user.user_id,
+            action_type="logout",
+            action_detail={
+                "op": "logout",
+                "context": {
+                    "ip": request.remote_addr,
+                    "user_agent": request.headers.get("User-Agent"),
+                },
+                "message": "登出",
+            },
+        )
     logout()
     return redirect(url_for("auth.login"))
