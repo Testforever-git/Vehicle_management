@@ -80,7 +80,11 @@
           <td class="ac-text-body">{{ v.masked_plate_no }}</td>
           <td class="ac-text-body">{{ v.status }}</td>
           <td class="ac-text-body">
-            {{ v.fuel_level if v.fuel_level is not none else '-' }}
+            {% if v.fuel_level is not none %}
+              {{ v.fuel_level }} %
+            {% else %}
+              -
+            {% endif %}
           </td>
           <td>
             <a class="btn btn-link btn-sm" href="{{ url_for('ui.vehicle_detail', vehicle_id=v.id, lang=lang) }}">

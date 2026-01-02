@@ -9,6 +9,10 @@ jp:
   overdue: "期限切れ"
   vin: "車台番号"
   plate_no: "車牌番号"
+  available_count: "利用可能"
+  rented_count: "貸出中"
+  maintenance_count: "整備中"
+  no_alerts: "該当なし"
 cn:
   page_title: "仪表盘"
   total_vehicles: "车辆总数"
@@ -20,3 +24,7 @@ cn:
   overdue: "已过期"
   vin: "车架号"
   plate_no: "车牌号"
+  available_count: "可用数"
+  rented_count: "已出租数"
+  maintenance_count: "维护中"
+  no_alerts: "暂无提醒"
