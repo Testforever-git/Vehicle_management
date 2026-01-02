@@ -90,12 +90,21 @@ def _create_tables():
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
-    execute(
+    if not fetch_one(
         """
-        ALTER TABLE field_catalog
-        ADD COLUMN IF NOT EXISTS is_audited TINYINT(1) NOT NULL DEFAULT 1
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'field_catalog'
+          AND column_name = 'is_audited'
         """
-    )
+    ):
+        execute(
+            """
+            ALTER TABLE field_catalog
+            ADD COLUMN is_audited TINYINT(1) NOT NULL DEFAULT 1
+            """
+        )
 
     execute(
         """
