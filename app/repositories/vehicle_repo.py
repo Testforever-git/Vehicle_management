@@ -31,6 +31,7 @@ VEHICLE_COLUMNS = [
     "ext_json",
     "note",
     "updated_by",
+    "etc_type",
 ]
 
 _VEHICLE_COLUMN_CACHE = None
@@ -193,7 +194,14 @@ def get_vehicle_by_vin(vin: str):
 def get_status(vehicle_id: int):
     # 你若还没建 vehicle_status 表，可以先建空表或注释这段
     sql = """
-    SELECT status, mileage, fuel_level, location_desc, update_time
+    SELECT status,
+           mileage,
+           fuel_level,
+           location_desc,
+           update_time,
+           inspection_due_yyyymm,
+           insurance_due_date,
+           has_etc_card
     FROM vehicle_status
     WHERE vehicle_id = %s
     """
@@ -203,7 +211,17 @@ def get_status(vehicle_id: int):
 def upsert_status(vehicle_id: int, payload: dict):
     if not _vehicle_status_available():
         return 0
-    fields = ["status", "mileage", "fuel_level", "location_desc", "update_time", "updated_by"]
+    fields = [
+        "status",
+        "mileage",
+        "fuel_level",
+        "location_desc",
+        "update_time",
+        "inspection_due_yyyymm",
+        "insurance_due_date",
+        "has_etc_card",
+        "updated_by",
+    ]
     columns = []
     values = []
     for field in fields:
@@ -259,3 +277,74 @@ def delete_vehicles(vehicle_ids: list[int]):
     placeholders = ", ".join(["%s"] * len(vehicle_ids))
     sql = f"DELETE FROM vehicle WHERE id IN ({placeholders})"
     return execute(sql, tuple(vehicle_ids))
+
+
+def set_inactive_for_overdue_inspections(current_yyyymm: int):
+    if not _vehicle_status_available():
+        return 0
+    sql = """
+    UPDATE vehicle_status
+    SET status = 'inactive',
+        update_time = NOW(),
+        updated_by = NULL
+    WHERE inspection_due_yyyymm IS NOT NULL
+      AND inspection_due_yyyymm < %s
+      AND (status IS NULL OR status <> 'inactive')
+    """
+    return execute(sql, (current_yyyymm,))
+
+
+def _base_due_query():
+    table_name = _vehicle_view_name()
+    if table_name == "v_vehicle_i18n":
+        select_fields = """
+            v.id, v.vin, v.plate_no,
+            v.brand_jp, v.brand_cn, v.model_jp, v.model_cn
+        """
+        join_sql = f"FROM {table_name} v"
+    else:
+        select_fields = """
+            v.id, v.vin, v.plate_no,
+            b.name_jp AS brand_jp, b.name_cn AS brand_cn,
+            m.name_jp AS model_jp, m.name_cn AS model_cn
+        """
+        join_sql = """
+            FROM vehicle v
+            JOIN md_brand b ON b.id = v.brand_id
+            JOIN md_model m ON m.id = v.model_id
+        """
+    return select_fields, join_sql
+
+
+def list_due_inspections(current_yyyymm: int, warn_yyyymm: int):
+    if not _vehicle_status_available():
+        return []
+    select_fields, join_sql = _base_due_query()
+    sql = f"""
+    SELECT {select_fields},
+           vs.inspection_due_yyyymm
+    {join_sql}
+    JOIN vehicle_status vs ON vs.vehicle_id = v.id
+    WHERE vs.inspection_due_yyyymm IS NOT NULL
+      AND vs.inspection_due_yyyymm <= %s
+    ORDER BY (vs.inspection_due_yyyymm < %s) DESC,
+             vs.inspection_due_yyyymm ASC
+    """
+    return fetch_all(sql, (warn_yyyymm, current_yyyymm))
+
+
+def list_due_insurance(current_date, warn_date):
+    if not _vehicle_status_available():
+        return []
+    select_fields, join_sql = _base_due_query()
+    sql = f"""
+    SELECT {select_fields},
+           vs.insurance_due_date
+    {join_sql}
+    JOIN vehicle_status vs ON vs.vehicle_id = v.id
+    WHERE vs.insurance_due_date IS NOT NULL
+      AND vs.insurance_due_date >= %s
+      AND vs.insurance_due_date <= %s
+    ORDER BY vs.insurance_due_date ASC
+    """
+    return fetch_all(sql, (current_date, warn_date))

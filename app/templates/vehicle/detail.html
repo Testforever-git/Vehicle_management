@@ -11,11 +11,17 @@
   <div class="col-md-5">
     <div class="card p-3">
       <div class="ac-title-sub">{{ t('vehicle_detail.section_basic') }}</div>
+      {% set etc_type_labels = {
+        'none': t('vehicle_detail.etc_type_none'),
+        'etc1': t('vehicle_detail.etc_type_etc1'),
+        'etc2': t('vehicle_detail.etc_type_etc2')
+      } %}
       {{ display_field('vehicle','brand_id', t('vehicle_detail.brand'), brand_label, 'main') }}
       {{ display_field('vehicle','model_id', t('vehicle_detail.model'), model_label) }}
       {{ display_field('vehicle','type_designation_code', t('vehicle_detail.type_designation_code'), vehicle.type_designation_code) }}
       {{ display_field('vehicle','plate_no', t('vehicle_detail.plate_no'), vehicle.masked_plate_no) }}
       {{ display_field('vehicle','vin', t('vehicle_detail.vin'), vehicle.vin) }}
+      {{ display_field('vehicle','etc_type', t('vehicle_detail.etc_type'), etc_type_labels.get(vehicle.etc_type, vehicle.etc_type)) }}
     </div>
 
     <div class="mt-2 d-flex gap-2">
@@ -32,10 +38,18 @@
     <div class="card p-3">
       <div class="ac-title-sub">{{ t('vehicle_detail.section_status') }}</div>
       {% if status %}
+        {% set etc_card_label = '-' %}
+        {% if status.has_etc_card is not none %}
+          {% set has_etc_card = status.has_etc_card in [1, '1', true] %}
+          {% set etc_card_label = t('vehicle_detail.has_etc_card_yes') if has_etc_card else t('vehicle_detail.has_etc_card_no') %}
+        {% endif %}
         {{ display_field('vehicle_status','status', t('vehicle_detail.status'), status.status) }}
         {{ display_field('vehicle_status','mileage', t('vehicle_detail.mileage'), status.mileage ~ ' km') }}
         {{ display_field('vehicle_status','fuel_level', t('vehicle_detail.fuel_level'), status.fuel_level ~ ' %') }}
         {{ display_field('vehicle_status','location_desc', t('vehicle_detail.location_desc'), status.location_desc) }}
+        {{ display_field('vehicle_status','inspection_due_yyyymm', t('vehicle_detail.inspection_due_yyyymm'), status.inspection_due_yyyymm) }}
+        {{ display_field('vehicle_status','insurance_due_date', t('vehicle_detail.insurance_due_date'), status.insurance_due_date) }}
+        {{ display_field('vehicle_status','has_etc_card', t('vehicle_detail.has_etc_card'), etc_card_label) }}
       {% else %}
         <p class="ac-text-meta">{{ t('vehicle_detail.no_status') }}</p>
       {% endif %}

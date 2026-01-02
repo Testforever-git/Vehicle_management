@@ -1,14 +1,20 @@
 jp:
-  section_title: "ステータス入力"
+  section_title: "車両状態"
   fields:
     status: "ステータス"
     mileage: "走行距離"
     fuel_level: "燃料/電量"
     location_desc: "位置"
+    inspection_due_yyyymm: "車検満了年月"
+    insurance_due_date: "任意保険満了日"
+    has_etc_card: "ETCカード"
 cn:
-  section_title: "状态录入"
+  section_title: "车辆状态"
   fields:
     status: "状态"
     mileage: "里程"
     fuel_level: "油量/电量"
     location_desc: "位置"
+    inspection_due_yyyymm: "车检到期年月"
+    insurance_due_date: "保险到期日"
+    has_etc_card: "ETC卡"

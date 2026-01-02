@@ -7,7 +7,24 @@
 
 {% block content %}
 <form method="post" action="{{ form_action }}" class="card p-3" enctype="multipart/form-data" id="vehicle-form">
-  <div class="row g-3">
+  {% if not is_new %}
+    <div class="row g-3">
+      <div class="col-12">
+        <h5 class="mb-2">{{ t('vehicle_status.section_title') }}</h5>
+      </div>
+      {% for field in status_fields %}
+        <div class="col-md-4">
+          {% if field.type == 'select' %}
+            {{ select_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], master_data[field.options_key]) }}
+          {% else %}
+            {{ input_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], field.type) }}
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="row g-3{% if not is_new %} mt-3{% endif %}">
     {% for field in vehicle_fields %}
       <div class="{{ 'col-12' if field.type == 'textarea' else 'col-md-4' }}">
         {% if field.name == 'model_year_ad' %}
@@ -26,10 +43,18 @@
             <div class="mb-3 ac-field ac-field-editable">
               <label class="form-label ac-field-label">{{ t(field.label_key) }}</label>
               <div class="input-group">
-                <input class="form-control ac-input"
-                       type="text"
-                       id="model-year-display"
-                       value="{{ vehicle[field.name] or '' }}">
+                <select class="form-select ac-input" name="model_year_ad" id="model-year-display">
+                  <option value="">{{ t('vehicle_edit.select_placeholder') }}</option>
+                  {% for option in master_data.model_years %}
+                    {% set is_selected = option.value|string == vehicle[field.name]|string %}
+                    <option value="{{ option.value }}"
+                            data-ad="{{ option.value }}"
+                            data-era="{{ option.era }}"
+                            {% if is_selected %}selected{% endif %}>
+                      {{ option.label }}
+                    </option>
+                  {% endfor %}
+                </select>
                 <span class="input-group-text">
                   <input class="form-check-input mt-0" type="checkbox" id="model-year-era-toggle">
                   <label class="form-check-label ms-1" for="model-year-era-toggle">
@@ -37,7 +62,6 @@
                   </label>
                 </span>
               </div>
-              <input type="hidden" name="model_year_ad" id="model-year-ad" value="{{ vehicle[field.name] or '' }}">
             </div>
           {% endif %}
         {% elif field.type == 'select' %}
@@ -49,20 +73,22 @@
     {% endfor %}
   </div>
 
-  <div class="row g-3 mt-3">
-    <div class="col-12">
-      <h5 class="mb-2">{{ t('vehicle_status.section_title') }}</h5>
-    </div>
-    {% for field in status_fields %}
-      <div class="col-md-4">
-        {% if field.type == 'select' %}
-          {{ select_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], master_data[field.options_key]) }}
-        {% else %}
-          {{ input_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], field.type) }}
-        {% endif %}
+  {% if is_new %}
+    <div class="row g-3 mt-3">
+      <div class="col-12">
+        <h5 class="mb-2">{{ t('vehicle_status.section_title') }}</h5>
       </div>
-    {% endfor %}
-  </div>
+      {% for field in status_fields %}
+        <div class="col-md-4">
+          {% if field.type == 'select' %}
+            {{ select_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], master_data[field.options_key]) }}
+          {% else %}
+            {{ input_field('vehicle_status', field.name, t(field.label_key), field.name, status_data[field.name], field.type) }}
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
 
   <div class="row g-3 mt-2">
     {% if field_perm.can_view('vehicle', 'legal_doc') %}
@@ -236,57 +262,35 @@
   });
   updateDirtyState();
 
-  const yearConversion = {{ year_conversion | tojson }};
   const yearToggle = document.getElementById('model-year-era-toggle');
   const yearDisplay = document.getElementById('model-year-display');
-  const yearHidden = document.getElementById('model-year-ad');
 
-  function normalizeYear(value) {
-    return (value || '').trim();
-  }
-
-  function syncYearHidden() {
-    if (!yearDisplay || !yearHidden) {
+  function updateYearLabels() {
+    if (!yearDisplay) {
       return;
     }
-    const displayValue = normalizeYear(yearDisplay.value);
-    if (yearToggle && yearToggle.checked) {
-      yearHidden.value = yearConversion.era_to_ad?.[displayValue] || '';
-    } else {
-      yearHidden.value = displayValue;
-    }
-  }
-
-  function syncYearDisplay() {
-    if (!yearDisplay || !yearHidden) {
-      return;
-    }
-    const hiddenValue = normalizeYear(yearHidden.value);
-    if (yearToggle && yearToggle.checked) {
-      yearDisplay.value = yearConversion.ad_to_era?.[hiddenValue] || hiddenValue;
-    } else {
-      yearDisplay.value = hiddenValue;
-    }
-  }
-
-  if (yearDisplay) {
-    yearDisplay.addEventListener('input', () => {
-      syncYearHidden();
+    const useEra = Boolean(yearToggle && yearToggle.checked);
+    const options = Array.from(yearDisplay.querySelectorAll('option[data-ad]'));
+    options.forEach((option) => {
+      const ad = option.dataset.ad || option.value;
+      const era = option.dataset.era;
+      option.textContent = useEra && era ? era : ad;
     });
   }
 
   if (yearToggle) {
     yearToggle.addEventListener('change', () => {
-      syncYearHidden();
-      syncYearDisplay();
+      updateYearLabels();
       updateDirtyState();
     });
   }
 
-  syncYearDisplay();
+  updateYearLabels();
 
   const brandSelect = form.querySelector('select[name="brand_id"]');
   const modelSelect = form.querySelector('select[name="model_id"]');
+  const etcTypeSelect = form.querySelector('select[name="etc_type"]');
+  const etcCardSelect = form.querySelector('select[name="has_etc_card"]');
 
   function filterModels() {
     if (!brandSelect || !modelSelect) {
@@ -316,6 +320,27 @@
     brandSelect.addEventListener('change', filterModels);
   }
   filterModels();
+
+  function syncEtcCardState() {
+    if (!etcTypeSelect || !etcCardSelect) {
+      return;
+    }
+    const hasEtc = etcTypeSelect.value && etcTypeSelect.value !== 'none';
+    if (!hasEtc) {
+      etcCardSelect.value = '0';
+      etcCardSelect.disabled = true;
+    } else {
+      etcCardSelect.disabled = false;
+    }
+  }
+
+  if (etcTypeSelect) {
+    etcTypeSelect.addEventListener('change', () => {
+      syncEtcCardState();
+      updateDirtyState();
+    });
+  }
+  syncEtcCardState();
 
   function updateDirtyState() {
     formFields.forEach((field) => {
