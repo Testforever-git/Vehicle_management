@@ -1,5 +1,7 @@
 from ..db.mysql import fetch_all, fetch_one, execute
 
+CATALOG_TABLES_SQL = "('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role')"
+
 
 def list_field_permissions(role_id: int):
     return fetch_all(
@@ -34,21 +36,40 @@ def list_field_catalog():
     return fetch_all(
         "SELECT table_name, field_name\n"
         "FROM field_catalog\n"
+        "WHERE field_name <> '__TABLE__'\n"
         "ORDER BY table_name, field_name"
     )
 
 
 def refresh_field_catalog():
     execute(
-        "DELETE FROM field_catalog\n"
-        "WHERE table_name IN ('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role')"
+        "DELETE fc FROM field_catalog fc\n"
+        "LEFT JOIN information_schema.columns ic\n"
+        "  ON fc.table_name = ic.table_name\n"
+        "  AND fc.field_name = ic.column_name\n"
+        "  AND ic.table_schema = DATABASE()\n"
+        "WHERE fc.table_name IN " + CATALOG_TABLES_SQL + "\n"
+        "  AND fc.field_name <> '__TABLE__'\n"
+        "  AND ic.column_name IS NULL",
     )
     execute(
-        "REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)\n"
+        "INSERT INTO field_catalog (table_name, field_name, data_type, is_nullable)\n"
         "SELECT table_name, column_name, data_type, (is_nullable = 'YES')\n"
         "FROM information_schema.columns\n"
         "WHERE table_schema = DATABASE()\n"
-        "  AND table_name IN ('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role')"
+        "  AND table_name IN " + CATALOG_TABLES_SQL + "\n"
+        "ON DUPLICATE KEY UPDATE\n"
+        "  data_type = VALUES(data_type),\n"
+        "  is_nullable = VALUES(is_nullable),\n"
+        "  updated_at = CURRENT_TIMESTAMP",
+    )
+    execute(
+        "INSERT INTO field_catalog (table_name, field_name, data_type, is_nullable, is_audited)\n"
+        "SELECT table_name, '__TABLE__', 'table', 0, 1\n"
+        "FROM information_schema.tables\n"
+        "WHERE table_schema = DATABASE()\n"
+        "  AND table_name IN " + CATALOG_TABLES_SQL + "\n"
+        "ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP",
     )
 
 
