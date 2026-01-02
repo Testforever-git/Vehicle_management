@@ -33,6 +33,7 @@ from ...security.users import get_current_user
 from werkzeug.security import generate_password_hash
 
 SYSTEM_FIELDS = {
+    "id",
     "created_at",
     "created_by",
     "created_date",

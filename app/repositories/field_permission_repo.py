@@ -31,6 +31,10 @@ def list_field_catalog():
 
 def refresh_field_catalog():
     execute(
+        "DELETE FROM field_catalog\n"
+        "WHERE table_name IN ('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role')"
+    )
+    execute(
         "REPLACE INTO field_catalog (table_name, field_name, data_type, is_nullable)\n"
         "SELECT table_name, column_name, data_type, (is_nullable = 'YES')\n"
         "FROM information_schema.columns\n"
