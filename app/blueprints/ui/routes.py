@@ -48,7 +48,8 @@ VEHICLE_FIELDS = [
     {"name": "brand_id", "label_key": "vehicle_edit.fields.brand_id", "type": "select", "options_key": "brands"},
     {"name": "model_id", "label_key": "vehicle_edit.fields.model_id", "type": "select", "options_key": "models"},
     {"name": "color_id", "label_key": "vehicle_edit.fields.color_id", "type": "select", "options_key": "colors"},
-    {"name": "model_year_ad", "label_key": "vehicle_edit.fields.model_year_ad", "type": "number"},
+    {"name": "model_year_ad", "label_key": "vehicle_edit.fields.model_year_ad", "type": "select"},
+    {"name": "etc_type", "label_key": "vehicle_edit.fields.etc_type", "type": "select", "options_key": "etc_type"},
     {"name": "type_designation_code", "label_key": "vehicle_edit.fields.type_designation_code", "type": "text"},
     {"name": "classification_number", "label_key": "vehicle_edit.fields.classification_number", "type": "text"},
     {"name": "engine_code", "label_key": "vehicle_edit.fields.engine_code", "type": "text"},
@@ -186,7 +187,9 @@ def _payload_from_form():
             value = request.form.get(name)
             if isinstance(value, str):
                 value = value.strip()
-            if value == "" and (
+            if name == "etc_type" and value == "":
+                payload[name] = "none"
+            elif value == "" and (
                 field.get("type") in {"number", "date"}
                 or name in NULLABLE_NUMERIC_FIELDS
                 or name in NULLABLE_TEXT_FIELDS
@@ -202,6 +205,9 @@ STATUS_FIELDS = [
     {"name": "mileage", "label_key": "vehicle_status.fields.mileage", "type": "number"},
     {"name": "fuel_level", "label_key": "vehicle_status.fields.fuel_level", "type": "number"},
     {"name": "location_desc", "label_key": "vehicle_status.fields.location_desc", "type": "text"},
+    {"name": "inspection_due_yyyymm", "label_key": "vehicle_status.fields.inspection_due_yyyymm", "type": "number"},
+    {"name": "insurance_due_date", "label_key": "vehicle_status.fields.insurance_due_date", "type": "date"},
+    {"name": "has_etc_card", "label_key": "vehicle_status.fields.has_etc_card", "type": "select", "options_key": "etc_card_options"},
 ]
 
 
@@ -213,11 +219,26 @@ def _status_payload_from_form():
             value = request.form.get(name)
             if isinstance(value, str):
                 value = value.strip()
-            if value == "" and field.get("type") in {"number"}:
+            if value == "" and field.get("type") in {"number", "date"}:
                 payload[name] = None
             else:
                 payload[name] = value
     return payload
+
+
+def _build_year_options():
+    conversion = _load_year_conversion()
+    years = list(conversion.get("ad_to_era", {}).keys())
+    def _year_sort_key(value: str):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+    years.sort(key=_year_sort_key, reverse=True)
+    return [
+        {"value": year, "label": year, "era": conversion["ad_to_era"].get(year, "")}
+        for year in years
+    ]
 
 
 def _load_master_data():
@@ -279,6 +300,16 @@ def _load_master_data():
             {"value": "rented", "label": "rented", "is_active": True},
             {"value": "maintenance", "label": "maintenance", "is_active": True},
         ],
+        "etc_type": [
+            {"value": "none", "label": "なし / 无", "is_active": True},
+            {"value": "etc1", "label": "ETC1.0", "is_active": True},
+            {"value": "etc2", "label": "ETC2.0", "is_active": True},
+        ],
+        "etc_card_options": [
+            {"value": "1", "label": "あり / 有", "is_active": True},
+            {"value": "0", "label": "なし / 无", "is_active": True},
+        ],
+        "model_years": _build_year_options(),
     }
 
 
