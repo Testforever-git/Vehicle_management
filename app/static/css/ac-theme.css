@@ -11,3 +11,6 @@
 .ac-field { margin-top: .35rem; }
 .ac-field-main .ac-field-value { font-size: 1.0rem; font-weight: 600; }
 .ac-field-readonly .readonly { padding:.35rem .5rem; background:#f8f9fa; border-radius:.35rem; }
+
+.ac-brand-logo { height: 36px; width: auto; margin-right: .5rem; }
+.ac-announcement-body { min-height: 120px; background: #f8f9fa; border: 1px dashed #dee2e6; border-radius: .5rem; }
