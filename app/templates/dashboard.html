@@ -16,27 +16,25 @@
   }
 </style>
 
-<div class="row g-3">
-  <div class="col-lg-4">
-    <div class="card p-3 h-100">
-      <div class="d-flex align-items-start justify-content-between gap-3">
-        <div>
-          <div class="ac-title-sub">{{ t('dashboard.total_vehicles') }}</div>
-          <div class="display-6">{{ total }}</div>
-        </div>
-        <div class="small">
-          <div class="fw-semibold">{{ t('dashboard.available_count') }}: {{ status_counts.available }}</div>
-          <div class="fw-semibold">{{ t('dashboard.rented_count') }}: {{ status_counts.rented }}</div>
-          <div class="fw-semibold">{{ t('dashboard.maintenance_count') }}: {{ status_counts.maintenance }}</div>
-        </div>
-        <div class="status-donut"
-             style="--available: {{ status_ratios.available }}; --rented: {{ status_ratios.rented }}; --maintenance: {{ status_ratios.maintenance }};">
-        </div>
-      </div>
+<div class="card p-3">
+  <div class="d-flex align-items-start justify-content-between gap-3">
+    <div>
+      <div class="ac-title-sub">{{ t('dashboard.total_vehicles') }}</div>
+      <div class="display-6">{{ total }}</div>
+    </div>
+    <div class="small">
+      <div class="fw-semibold">{{ t('dashboard.available_count') }}: {{ status_counts.available }}</div>
+      <div class="fw-semibold">{{ t('dashboard.rented_count') }}: {{ status_counts.rented }}</div>
+      <div class="fw-semibold">{{ t('dashboard.maintenance_count') }}: {{ status_counts.maintenance }}</div>
+    </div>
+    <div class="status-donut"
+         style="--available: {{ status_ratios.available }}; --rented: {{ status_ratios.rented }}; --maintenance: {{ status_ratios.maintenance }};">
     </div>
   </div>
+</div>
 
-  <div class="col-lg-4">
+<div class="row g-3 mt-1">
+  <div class="col-lg-6">
     <div class="card p-3 h-100">
       <div class="ac-title-sub">{{ t('dashboard.inspection_due_title') }}</div>
       {% if inspection_alerts %}
@@ -64,7 +62,7 @@
     </div>
   </div>
 
-  <div class="col-lg-4">
+  <div class="col-lg-6">
     <div class="card p-3 h-100">
       <div class="ac-title-sub">{{ t('dashboard.insurance_due_title') }}</div>
       {% if insurance_alerts %}
