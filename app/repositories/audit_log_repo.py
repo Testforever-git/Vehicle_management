@@ -39,7 +39,6 @@ def list_audit_logs(limit: int, offset: int):
                al.action_type,
                al.created_at,
                JSON_UNQUOTE(JSON_EXTRACT(al.action_detail, '$.message')) AS message,
-               JSON_UNQUOTE(JSON_EXTRACT(al.action_detail, '$.fields')) AS fields,
                u.username,
                u.full_name
         FROM audit_log al

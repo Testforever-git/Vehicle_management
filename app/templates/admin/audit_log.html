@@ -85,7 +85,6 @@
             <th scope="col">{{ t('admin_audit.actor') }}</th>
             <th scope="col">{{ t('admin_audit.action_type') }}</th>
             <th scope="col">{{ t('admin_audit.message') }}</th>
-            <th scope="col">{{ t('admin_audit.fields') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -95,11 +94,10 @@
               <td>{{ log.actor_label }}</td>
               <td>{{ log.action_type }}</td>
               <td class="audit-ellipsis" title="{{ log.message or '-' }}">{{ log.message or '-' }}</td>
-              <td class="audit-ellipsis" title="{{ log.fields or '-' }}">{{ log.fields or '-' }}</td>
             </tr>
           {% else %}
             <tr>
-              <td colspan="5" class="text-muted">{{ t('admin_audit.empty') }}</td>
+              <td colspan="4" class="text-muted">{{ t('admin_audit.empty') }}</td>
             </tr>
           {% endfor %}
         </tbody>
