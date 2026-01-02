@@ -206,18 +206,59 @@ CREATE TABLE vehicle_media (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
-## 5. vehicle_log
+## 5. audit_log
 ### Purpose
-统一审计入口：扫码/编辑/状态更新/模块事件都写这里。
+统一审计入口： 记录系统数据的变化以及用户的登入登出。
 
-Fields:
-- id (PK)
-- vehicle_id (FK)
-- actor (user/system)
-- action_type
-- action_detail (JSON)
-- source_module
-- created_at
+CREATE TABLE IF NOT EXISTS `audit_log` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `vehicle_id` INT NULL COMMENT '可为空；与 vehicle.id 关联（如登录/登出时为空）',
+  `actor` ENUM('user','system') NOT NULL DEFAULT 'system' COMMENT '操作主体：用户/系统',
+  `actor_id` INT NULL COMMENT 'actor=user 时应为 user.id；actor=system 时为空',
+  `action_type` ENUM('login','logout','insert','delete','update') NOT NULL,
+  `action_detail` JSON NOT NULL COMMENT '结构化审计信息（table/pk/fields/message 等）',
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_created_at` (`created_at`),
+  KEY `idx_audit_vehicle_id` (`vehicle_id`),
+  KEY `idx_audit_actor` (`actor`,`actor_id`),
+  KEY `idx_audit_action_type` (`action_type`,`created_at`),
+  CONSTRAINT `fk_audit_vehicle`
+    FOREIGN KEY (`vehicle_id`) REFERENCES `vehicle`(`id`)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT `fk_audit_actor_user`
+    FOREIGN KEY (`actor_id`) REFERENCES `user`(`id`)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT `chk_audit_action_detail_json`
+    CHECK (JSON_VALID(`action_detail`))
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
+
+action_detail sample1:
+{
+  "table": "vehicle",
+  "pk": {"id": 123},
+  "op": "update",
+  "fields": {
+    "purchase_price": {"old": 1000000, "new": 1100000}
+  },
+  "message": "在vehicle表修改purchase_price字段"
+}
+action_detail sample2:
+{
+  "op": "login",
+  "context": {
+    "ip": "1.2.3.4",
+    "user_agent": "Chrome/143.0",
+    "session_id": "sess_xxx"
+  },
+  "message": "登录"
+}
+UI上显示 用户 + action_detail.message
 
 ## 6. vehicle_qr
 ### Purpose
