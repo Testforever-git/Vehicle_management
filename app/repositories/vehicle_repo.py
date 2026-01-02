@@ -31,6 +31,7 @@ VEHICLE_COLUMNS = [
     "ext_json",
     "note",
     "updated_by",
+    "etc_type",
 ]
 
 _VEHICLE_COLUMN_CACHE = None
@@ -193,7 +194,14 @@ def get_vehicle_by_vin(vin: str):
 def get_status(vehicle_id: int):
     # 你若还没建 vehicle_status 表，可以先建空表或注释这段
     sql = """
-    SELECT status, mileage, fuel_level, location_desc, update_time
+    SELECT status,
+           mileage,
+           fuel_level,
+           location_desc,
+           update_time,
+           inspection_due_yyyymm,
+           insurance_due_date,
+           has_etc_card
     FROM vehicle_status
     WHERE vehicle_id = %s
     """
@@ -203,7 +211,17 @@ def get_status(vehicle_id: int):
 def upsert_status(vehicle_id: int, payload: dict):
     if not _vehicle_status_available():
         return 0
-    fields = ["status", "mileage", "fuel_level", "location_desc", "update_time", "updated_by"]
+    fields = [
+        "status",
+        "mileage",
+        "fuel_level",
+        "location_desc",
+        "update_time",
+        "inspection_due_yyyymm",
+        "insurance_due_date",
+        "has_etc_card",
+        "updated_by",
+    ]
     columns = []
     values = []
     for field in fields:
