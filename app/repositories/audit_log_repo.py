@@ -11,7 +11,7 @@ def create_audit_log(
     action_type: str,
     action_detail: dict[str, Any],
 ):
-    detail = json.dumps(action_detail, ensure_ascii=False)
+    detail = json.dumps(action_detail, ensure_ascii=False, default=str)
     try:
         execute(
             """
