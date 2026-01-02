@@ -12,6 +12,12 @@ from ...repositories.field_permission_repo import (
 from ...repositories.role_repo import list_roles
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
 from ...repositories.vehicle_log_repo import log_vehicle_action
+from ...repositories.audit_log_repo import create_audit_log, count_audit_logs, list_audit_logs
+from ...repositories.audit_setting_repo import (
+    list_audit_catalog,
+    update_audit_flags,
+    update_table_audit_flag,
+)
 from ...repositories.master_data_repo import (
     list_brands,
     list_models,
@@ -253,6 +259,149 @@ def field_permissions():
             "has_next": page < total_pages,
         },
     )
+
+
+@bp.get("/audit-log")
+def audit_log():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    refresh_field_catalog()
+    try:
+        page = int(request.args.get("page", "1") or 1)
+    except ValueError:
+        page = 1
+    if page < 1:
+        page = 1
+    try:
+        per_page = int(request.args.get("per_page", "20") or 20)
+    except ValueError:
+        per_page = 20
+    if per_page not in {20, 50}:
+        per_page = 20
+
+    field_catalog = list_audit_catalog()
+    catalog_map = {}
+    table_audit_flags = {}
+    audit_flags = {}
+    for row in field_catalog:
+        table_name = row["table_name"]
+        field_name = row["field_name"]
+        is_audited = bool(row["is_audited"])
+        audit_flags[(table_name, field_name)] = is_audited
+        if field_name == "__TABLE__":
+            table_audit_flags[table_name] = is_audited
+            continue
+        catalog_map.setdefault(table_name, set()).add(field_name)
+
+    audit_tables = []
+    for table_name in sorted(catalog_map.keys()):
+        table_fields = catalog_map[table_name]
+        logical_fields = []
+        for logical_name in _logical_fields_for_table(table_fields):
+            actual_fields = _actual_fields(table_fields, logical_name)
+            is_audited = all(
+                audit_flags.get((table_name, field_name), False)
+                for field_name in actual_fields
+            )
+            logical_fields.append(
+                {"name": logical_name, "is_audited": is_audited}
+            )
+        audit_tables.append(
+            {
+                "table_name": table_name,
+                "table_audited": table_audit_flags.get(table_name, False),
+                "fields": logical_fields,
+            }
+        )
+
+    total_logs = count_audit_logs()
+    total_pages = max((total_logs + per_page - 1) // per_page, 1)
+    if page > total_pages:
+        page = total_pages
+    offset = (page - 1) * per_page
+    audit_logs = list_audit_logs(per_page, offset)
+    for row in audit_logs:
+        if row["actor"] == "user":
+            row["actor_label"] = row["full_name"] or row["username"] or "-"
+        else:
+            row["actor_label"] = row["actor"]
+
+    return render_template(
+        "admin/audit_log.html",
+        active_menu="audit_log",
+        audit_tables=audit_tables,
+        audit_logs=audit_logs,
+        pagination={
+            "page": page,
+            "per_page": per_page,
+            "total": total_logs,
+            "total_pages": total_pages,
+            "has_prev": page > 1,
+            "has_next": page < total_pages,
+        },
+    )
+
+
+@bp.post("/audit-log")
+def update_audit_log_settings():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    refresh_field_catalog()
+    table_name = request.form.get("table_name", "").strip()
+    page = request.form.get("page", "").strip()
+    per_page = request.form.get("per_page", "").strip()
+    redirect_params = {}
+    if page:
+        redirect_params["page"] = page
+    if per_page:
+        redirect_params["per_page"] = per_page
+    if not table_name:
+        flash("missing table name", "warning")
+        return redirect(url_for("admin.audit_log", **redirect_params))
+
+    field_catalog = list_audit_catalog()
+    catalog_map = _catalog_map(
+        [row for row in field_catalog if row["field_name"] != "__TABLE__"]
+    )
+    table_fields = catalog_map.get(table_name, set())
+    if not table_fields:
+        flash("invalid table name", "warning")
+        return redirect(url_for("admin.audit_log", **redirect_params))
+
+    selected_fields = request.form.getlist("field_names")
+    table_audited = request.form.get("table_audited") == "1"
+
+    if table_audited:
+        update_audit_flags(table_name, sorted(table_fields), True)
+        update_table_audit_flag(table_name, True)
+        detail_fields = ["__TABLE__"]
+        message = f"更新审计配置: {table_name} 全表审计"
+    else:
+        audited_actual_fields = set()
+        for logical_name in selected_fields:
+            audited_actual_fields.update(_actual_fields(table_fields, logical_name))
+        unaudited_fields = set(table_fields) - audited_actual_fields
+        update_audit_flags(table_name, sorted(audited_actual_fields), True)
+        update_audit_flags(table_name, sorted(unaudited_fields), False)
+        update_table_audit_flag(table_name, False)
+        detail_fields = selected_fields
+        message = f"更新审计配置: {table_name} 字段({', '.join(selected_fields) or '无'})"
+
+    current_user = get_current_user()
+    create_audit_log(
+        None,
+        actor="user",
+        actor_id=current_user.user_id,
+        action_type="update",
+        action_detail={
+            "table": "field_catalog",
+            "op": "update",
+            "fields": detail_fields,
+            "message": message,
+        },
+    )
+    flash("audit settings updated", "success")
+    return redirect(url_for("admin.audit_log", **redirect_params))
 
 
 @bp.post("/field-permissions")
