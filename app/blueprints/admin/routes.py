@@ -32,14 +32,7 @@ from ...repositories.master_data_repo import (
 from ...security.users import get_current_user
 from werkzeug.security import generate_password_hash
 
-SYSTEM_FIELDS = {
-    "created_at",
-    "created_by",
-    "created_date",
-    "updated_at",
-    "updated_by",
-    "updated_date",
-}
+SYSTEM_FIELDS = set()
 
 
 def _require_admin():
