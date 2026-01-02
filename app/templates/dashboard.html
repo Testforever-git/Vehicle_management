@@ -2,47 +2,85 @@
 {% block page_title %}{{ t('dashboard.page_title') }}{% endblock %}
 
 {% block content %}
-<div class="card p-3">
-  <div class="ac-title-sub">{{ t('dashboard.total_vehicles') }}</div>
-  <div class="display-6">{{ total }}</div>
+<style>
+  .status-donut {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: conic-gradient(
+      #28a745 0% calc(var(--available) * 1%),
+      #ffc107 0% calc((var(--available) + var(--rented)) * 1%),
+      #dc3545 0% calc((var(--available) + var(--rented) + var(--maintenance)) * 1%),
+      #e9ecef 0 100%
+    );
+  }
+</style>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <div class="d-flex align-items-start justify-content-between gap-3">
+        <div>
+          <div class="ac-title-sub">{{ t('dashboard.total_vehicles') }}</div>
+          <div class="display-6">{{ total }}</div>
+        </div>
+        <div class="small">
+          <div class="fw-semibold">{{ t('dashboard.available_count') }}: {{ status_counts.available }}</div>
+          <div class="fw-semibold">{{ t('dashboard.rented_count') }}: {{ status_counts.rented }}</div>
+          <div class="fw-semibold">{{ t('dashboard.maintenance_count') }}: {{ status_counts.maintenance }}</div>
+        </div>
+        <div class="status-donut"
+             style="--available: {{ status_ratios.available }}; --rented: {{ status_ratios.rented }}; --maintenance: {{ status_ratios.maintenance }};">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <div class="ac-title-sub">{{ t('dashboard.inspection_due_title') }}</div>
+      {% if inspection_alerts %}
+        {% for item in inspection_alerts %}
+          <div class="border rounded p-2 mb-2 {% if item.is_urgent %}border-danger{% else %}border-warning{% endif %}">
+            <div class="fw-semibold">{{ item.vehicle_label }}</div>
+            <div class="small text-muted">
+              {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+            </div>
+            <div class="small">
+              {{ t('dashboard.inspection_due_yyyymm') }}: {{ item.due_yyyymm }}
+              {% if item.is_overdue %}
+                <span class="badge bg-danger ms-2">{{ t('dashboard.overdue') }}</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-muted small">{{ t('dashboard.no_alerts') }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card p-3 h-100">
+      <div class="ac-title-sub">{{ t('dashboard.insurance_due_title') }}</div>
+      {% if insurance_alerts %}
+        {% for item in insurance_alerts %}
+          <div class="border rounded p-2 mb-2 border-warning">
+            <div class="fw-semibold">{{ item.vehicle_label }}</div>
+            <div class="small text-muted">
+              {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
+            </div>
+            <div class="small">
+              {{ t('dashboard.insurance_due_date') }}: {{ item.due_date }}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="text-muted small">{{ t('dashboard.no_alerts') }}</div>
+      {% endif %}
+    </div>
+  </div>
 </div>
-
-{% if inspection_alerts %}
-  <div class="card p-3 mt-3">
-    <div class="ac-title-sub">{{ t('dashboard.inspection_due_title') }}</div>
-    {% for item in inspection_alerts %}
-      <div class="border rounded p-2 mb-2 {% if item.is_urgent %}border-danger{% else %}border-warning{% endif %}">
-        <div class="fw-semibold">{{ item.vehicle_label }}</div>
-        <div class="small text-muted">
-          {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
-        </div>
-        <div class="small">
-          {{ t('dashboard.inspection_due_yyyymm') }}: {{ item.due_yyyymm }}
-          {% if item.is_overdue %}
-            <span class="badge bg-danger ms-2">{{ t('dashboard.overdue') }}</span>
-          {% endif %}
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
-
-{% if insurance_alerts %}
-  <div class="card p-3 mt-3">
-    <div class="ac-title-sub">{{ t('dashboard.insurance_due_title') }}</div>
-    {% for item in insurance_alerts %}
-      <div class="border rounded p-2 mb-2 border-warning">
-        <div class="fw-semibold">{{ item.vehicle_label }}</div>
-        <div class="small text-muted">
-          {{ t('dashboard.vin') }}: {{ item.vin or '-' }} · {{ t('dashboard.plate_no') }}: {{ item.plate_no or '-' }}
-        </div>
-        <div class="small">
-          {{ t('dashboard.insurance_due_date') }}: {{ item.due_date }}
-        </div>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
 
 {% if perms.can('vehicle','view') %}
 <div class="mt-3">
