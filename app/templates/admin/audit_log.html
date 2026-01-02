@@ -137,12 +137,30 @@
           .forEach((input) => { input.checked = checked; });
       }
 
+      function syncTableToggle(tableName) {
+        const fields = Array.from(
+          document.querySelectorAll(`.audit-field-list[data-table="${tableName}"] .audit-field-toggle`)
+        );
+        const allChecked = fields.length > 0 && fields.every((input) => input.checked);
+        document.querySelectorAll(`.audit-table-toggle[data-target="${tableName}"]`)
+          .forEach((input) => { input.checked = allChecked; });
+      }
+
       document.querySelectorAll(".audit-table-toggle").forEach((toggle) => {
         toggle.addEventListener("change", (event) => {
           const tableName = event.target.dataset.target;
           toggleTableFields(tableName, event.target.checked);
           document.querySelectorAll(`.audit-table-toggle[data-target="${tableName}"]`)
             .forEach((input) => { input.checked = event.target.checked; });
+        });
+      });
+
+      document.querySelectorAll(".audit-field-toggle").forEach((toggle) => {
+        toggle.addEventListener("change", (event) => {
+          const tableName = event.target.closest(".audit-field-list")?.dataset.table;
+          if (tableName) {
+            syncTableToggle(tableName);
+          }
         });
       });
     })();

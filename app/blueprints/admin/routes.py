@@ -370,6 +370,9 @@ def update_audit_log_settings():
 
     selected_fields = request.form.getlist("field_names")
     table_audited = request.form.get("table_audited") == "1"
+    logical_fields = _logical_fields_for_table(table_fields)
+    if table_audited and len(selected_fields) != len(logical_fields):
+        table_audited = False
 
     if table_audited:
         update_audit_flags(table_name, sorted(table_fields), True)
