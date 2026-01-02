@@ -8,6 +8,7 @@ jp:
     management: "管理システムログイン"
   home_title: "会社サービス紹介"
   home_intro: "私たちは車両修理、レンタル、中古車買取・販売を一括で提供し、安心して車と向き合える環境づくりを支援しています。"
+  announcement_title: "お知らせ"
   sections:
     repair_title: "車両修理"
     repair_summary: "日常整備から緊急トラブルまで、専門スタッフが迅速に対応します。"
@@ -57,6 +58,7 @@ cn:
     management: "管理系统登录"
   home_title: "公司业务介绍"
   home_intro: "我们提供车辆修理、车辆出租以及二手车收购与出售的一站式服务，帮助客户安心用车。"
+  announcement_title: "公告"
   sections:
     repair_title: "车辆修理"
     repair_summary: "从日常保养到紧急故障，专业团队快速响应。"

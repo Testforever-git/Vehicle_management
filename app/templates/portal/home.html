@@ -7,6 +7,13 @@
   <p class="ac-text-body">{{ t('portal.home_intro') }}</p>
 </div>
 
+<div class="card mb-4 ac-announcement">
+  <div class="card-body">
+    <h5 class="mb-2">{{ t('portal.announcement_title') }}</h5>
+    <div class="ac-announcement-body"></div>
+  </div>
+</div>
+
 <ul class="nav nav-pills mb-4">
   <li class="nav-item">
     <a class="nav-link active" href="{{ url_for('portal.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
