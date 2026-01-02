@@ -5,6 +5,7 @@ from .mysql import execute, fetch_one
 
 def ensure_schema():
     _create_tables()
+    _create_views()
     _seed_roles()
     _seed_role_permissions()
     _seed_users()
@@ -100,6 +101,44 @@ def _create_tables():
             INDEX idx_vehicle_qr_vehicle_id (vehicle_id),
             CONSTRAINT fk_vehicle_qr_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+
+def _create_views():
+    execute(
+        """
+        CREATE OR REPLACE VIEW v_vehicle_i18n AS
+        SELECT
+          v.*,
+          b.brand_code,
+          b.name_jp AS brand_jp,
+          b.name_cn AS brand_cn,
+          m.model_code,
+          m.name_jp AS model_jp,
+          m.name_cn AS model_cn,
+          c.color_code,
+          c.name_jp AS color_jp,
+          c.name_cn AS color_cn,
+          el.name_jp AS engine_layout_jp,
+          el.name_cn AS engine_layout_cn,
+          ft.name_jp AS fuel_type_jp,
+          ft.name_cn AS fuel_type_cn,
+          dt.name_jp AS drive_type_jp,
+          dt.name_cn AS drive_type_cn
+        FROM vehicle v
+        JOIN md_brand b ON b.id = v.brand_id
+        JOIN md_model m ON m.id = v.model_id
+        LEFT JOIN md_color c ON c.id = v.color_id
+        LEFT JOIN md_enum el ON el.enum_type='engine_layout'
+          AND el.enum_code=v.engine_layout_code
+          AND el.is_active=1
+        LEFT JOIN md_enum ft ON ft.enum_type='fuel_type'
+          AND ft.enum_code=v.fuel_type_code
+          AND ft.is_active=1
+        LEFT JOIN md_enum dt ON dt.enum_type='drive_type'
+          AND dt.enum_code=v.drive_type_code
+          AND dt.is_active=1
         """
     )
 
