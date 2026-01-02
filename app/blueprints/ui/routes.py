@@ -1,7 +1,7 @@
 # app/blueprints/ui/routes.py
 import os
 import shutil
-from datetime import date
+from datetime import date, datetime
 
 import yaml
 
@@ -58,12 +58,18 @@ def _audit_changes(
     if not table_audited and not audited_fields:
         return
     old_values = old_values or {}
+    def _normalize_value(value):
+        if value is None or value == "":
+            return None
+        if isinstance(value, (date, datetime)):
+            return value.isoformat()
+        return str(value)
     changed_fields = {}
     for field_name, new_value in new_values.items():
         if not table_audited and field_name not in audited_fields:
             continue
         old_value = old_values.get(field_name)
-        if old_value != new_value:
+        if _normalize_value(old_value) != _normalize_value(new_value):
             changed_fields[field_name] = {"old": old_value, "new": new_value}
     if not changed_fields:
         return

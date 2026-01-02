@@ -4,7 +4,13 @@
 
 {% block content %}
   <section class="mb-4">
-    <h5 class="mb-3">{{ t('admin_audit.settings_title') }}</h5>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <h5 class="mb-0">{{ t('admin_audit.settings_title') }}</h5>
+      <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#auditSettings">
+        {{ t('admin_audit.toggle_settings') }}
+      </button>
+    </div>
+    <div class="collapse" id="auditSettings">
     {% for table in audit_tables %}
       <div class="card mb-3 audit-table-card">
         <div class="card-header">
@@ -53,6 +59,7 @@
         </div>
       </div>
     {% endfor %}
+    </div>
   </section>
 
   <section>

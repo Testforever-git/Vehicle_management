@@ -1,6 +1,7 @@
 jp:
   page_title: "監査ログ"
   settings_title: "監査設定"
+  toggle_settings: "設定を表示/非表示"
   table_audit_label: "テーブル全体を監査"
   save: "保存"
   logs_title: "監査ログ一覧"
@@ -18,6 +19,7 @@ jp:
 cn:
   page_title: "审计日志"
   settings_title: "审计设置"
+  toggle_settings: "展开/折叠设置"
   table_audit_label: "整表审计"
   save: "保存"
   logs_title: "审计日志列表"
