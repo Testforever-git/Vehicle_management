@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_audit.page_title') }}{% endblock %}
+
+{% block content %}
+  <section class="mb-4">
+    <h5 class="mb-3">{{ t('admin_audit.settings_title') }}</h5>
+    {% for table in audit_tables %}
+      <div class="card mb-3 audit-table-card">
+        <div class="card-header">
+          <strong>{{ table.table_name }}</strong>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{{ url_for('admin.audit_log', lang=lang) }}" class="audit-table-form">
+            <input type="hidden" name="table_name" value="{{ table.table_name }}">
+            <input type="hidden" name="page" value="{{ pagination.page }}">
+            <input type="hidden" name="per_page" value="{{ pagination.per_page }}">
+            <div class="d-flex align-items-center mb-3">
+              <div class="form-check form-switch">
+                <input class="form-check-input audit-table-toggle"
+                       type="checkbox"
+                       name="table_audited"
+                       value="1"
+                       data-target="{{ table.table_name }}"
+                       id="table-audit-{{ table.table_name }}"
+                       {% if table.table_audited %}checked{% endif %}>
+                <label class="form-check-label" for="table-audit-{{ table.table_name }}">
+                  {{ t('admin_audit.table_audit_label') }}
+                </label>
+              </div>
+            </div>
+            <div class="row g-2 audit-field-list" data-table="{{ table.table_name }}">
+              {% for field in table.fields %}
+                <div class="col-12 col-sm-6 col-lg-4">
+                  <div class="form-check">
+                    <input class="form-check-input audit-field-toggle"
+                           type="checkbox"
+                           name="field_names"
+                           value="{{ field.name }}"
+                           id="audit-field-{{ table.table_name }}-{{ field.name }}"
+                           {% if field.is_audited %}checked{% endif %}>
+                    <label class="form-check-label" for="audit-field-{{ table.table_name }}-{{ field.name }}">
+                      {{ field.name }}
+                    </label>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+            <div class="text-end mt-3">
+              <button class="btn btn-primary">{{ t('admin_audit.save') }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+  </section>
+
+  <section>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+      <h5 class="mb-0">{{ t('admin_audit.logs_title') }}</h5>
+      <form method="get" action="{{ url_for('admin.audit_log', lang=lang) }}" class="d-flex align-items-center gap-2">
+        <label class="form-label mb-0">{{ t('admin_audit.per_page_label') }}</label>
+        <select name="per_page" class="form-select form-select-sm" style="max-width: 140px;">
+          {% for size in [20, 50] %}
+            <option value="{{ size }}" {% if pagination.per_page == size %}selected{% endif %}>
+              {{ size }}
+            </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary btn-sm">{{ t('admin_audit.filter') }}</button>
+      </form>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-striped align-middle audit-log-table">
+        <thead>
+          <tr>
+            <th scope="col">{{ t('admin_audit.created_at') }}</th>
+            <th scope="col">{{ t('admin_audit.actor') }}</th>
+            <th scope="col">{{ t('admin_audit.action_type') }}</th>
+            <th scope="col">{{ t('admin_audit.message') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in audit_logs %}
+            <tr>
+              <td>{{ log.created_at }}</td>
+              <td>{{ log.actor_label }}</td>
+              <td>{{ log.action_type }}</td>
+              <td>{{ log.message or '-' }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-muted">{{ t('admin_audit.empty') }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <nav class="d-flex justify-content-between align-items-center">
+      <span class="ac-text-meta">
+        {{ t('admin_audit.page_label') }} {{ pagination.page }} / {{ pagination.total_pages }}
+        · {{ t('admin_audit.total') }} {{ pagination.total }}
+      </span>
+      <ul class="pagination mb-0">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ url_for('admin.audit_log', lang=lang, page=pagination.page-1, per_page=pagination.per_page) }}">
+            {{ t('admin_audit.prev') }}
+          </a>
+        </li>
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ url_for('admin.audit_log', lang=lang, page=pagination.page+1, per_page=pagination.per_page) }}">
+            {{ t('admin_audit.next') }}
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </section>
+
+  <style>
+    .audit-log-table thead th {
+      background-color: #f3f5f8;
+    }
+  </style>
+  <script>
+    (function () {
+      function toggleTableFields(tableName, checked) {
+        document.querySelectorAll(`.audit-field-list[data-table="${tableName}"] .audit-field-toggle`)
+          .forEach((input) => { input.checked = checked; });
+      }
+
+      document.querySelectorAll(".audit-table-toggle").forEach((toggle) => {
+        toggle.addEventListener("change", (event) => {
+          const tableName = event.target.dataset.target;
+          toggleTableFields(tableName, event.target.checked);
+          document.querySelectorAll(`.audit-table-toggle[data-target="${tableName}"]`)
+            .forEach((input) => { input.checked = event.target.checked; });
+        });
+      });
+    })();
+  </script>
+{% endblock %}
