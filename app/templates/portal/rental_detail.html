@@ -5,6 +5,11 @@
 
 {% block page_title %}{{ t('portal.rental_detail_title') }}{% endblock %}
 
+{% block head_extra %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="mb-3">
   <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('portal.portal_rentals', lang=lang) }}">
@@ -42,6 +47,15 @@
     <div class="card p-3 mb-3">
       <h5 class="mb-2">{{ brand_label }} / {{ model_label }}</h5>
       <div class="text-muted">{{ t('portal.rentals_mileage') }}: {{ status.mileage if status.mileage is not none else '-' }} km</div>
+      <div class="text-muted">{{ t('portal.rental_year_label') }}: {{ vehicle.model_year_ad or '-' }}</div>
+      <div class="text-muted">
+        {{ t('portal.rental_base_price_label') }}:
+        {% if pricing and pricing.daily_price is not none %}
+          {{ pricing.daily_price }} {{ t('portal.rental_price_unit') }}
+        {% else %}
+          -
+        {% endif %}
+      </div>
     </div>
     <div class="card p-3">
       <h5 class="mb-2">{{ t('portal.rental_description_title') }}</h5>
@@ -50,6 +64,56 @@
       {% else %}
         <p class="text-muted mb-0">{{ t('portal.rental_description_empty') }}</p>
       {% endif %}
+    </div>
+    <div class="card p-3 mt-3">
+      <h5 class="mb-3">{{ t('portal.rental_apply_section_title') }}</h5>
+      {% if submitted %}
+        <div class="alert alert-success">{{ t('portal.rental_submit_success') }}</div>
+      {% endif %}
+      {% if not current_customer.is_authenticated %}
+        <div class="alert alert-warning">{{ t('portal.rental_login_hint') }}</div>
+      {% endif %}
+      <form method="post" action="{{ url_for('portal.portal_rental_request', vehicle_id=vehicle.id, lang=lang) }}">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ t('portal.rental_date_start') }}</label>
+            <input type="date" class="form-control" name="start_date" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ t('portal.rental_date_end') }}</label>
+            <input type="date" class="form-control" name="end_date" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_location_label') }}</label>
+            <div id="rental-map" class="border rounded" style="height: 220px;"></div>
+            <div class="text-muted small mt-2" id="rental-location-hint">{{ t('portal.rental_location_hint') }}</div>
+            <input type="hidden" name="delivery_lat" id="delivery-lat">
+            <input type="hidden" name="delivery_lng" id="delivery-lng">
+            <input type="hidden" name="delivery_address" id="delivery-address">
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_services_label') }}</label>
+            <div class="d-flex flex-column gap-2">
+              {% for service in rental_services %}
+                <label class="form-check-label">
+                  <input class="form-check-input me-2" type="checkbox" name="service_ids" value="{{ service.id }}">
+                  {{ service.name_jp if lang == 'jp' else service.name_cn }}
+                  <span class="text-muted small">({{ service.price }} {{ service.currency }})</span>
+                </label>
+              {% else %}
+                <div class="text-muted small">-</div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_note_label') }}</label>
+            <textarea class="form-control" name="note" rows="3"></textarea>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary w-100">{{ t('portal.rentals_apply_cta') }}</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -67,5 +131,48 @@
     }
     mainImage.src = "{{ url_for('portal.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename='__PLACEHOLDER__') }}".replace('__PLACEHOLDER__', filename);
   });
+
+  const mapContainer = document.getElementById('rental-map');
+  if (mapContainer && window.L) {
+    const defaultLatLng = [35.681236, 139.767125];
+    const map = L.map(mapContainer).setView(defaultLatLng, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+    let marker = null;
+    const latInput = document.getElementById('delivery-lat');
+    const lngInput = document.getElementById('delivery-lng');
+    const addressInput = document.getElementById('delivery-address');
+    const hint = document.getElementById('rental-location-hint');
+
+    const setMarker = (lat, lng) => {
+      if (marker) {
+        map.removeLayer(marker);
+      }
+      marker = L.marker([lat, lng]).addTo(map);
+      map.setView([lat, lng], 13);
+      if (latInput && lngInput) {
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+      }
+      if (addressInput) {
+        addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      }
+      if (hint) {
+        hint.textContent = "{{ t('portal.rental_location_selected') }}: " + `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      }
+    };
+
+    map.on('click', (event) => {
+      setMarker(event.latlng.lat, event.latlng.lng);
+    });
+
+    if (window.confirm("{{ t('portal.rental_location_consent') }}") && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setMarker(position.coords.latitude, position.coords.longitude);
+      });
+    }
+  }
 </script>
 {% endblock %}
