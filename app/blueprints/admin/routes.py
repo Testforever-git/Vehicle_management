@@ -23,6 +23,11 @@ from ...repositories.audit_setting_repo import (
 )
 from ...repositories.rental_pricing_repo import list_rental_pricing, upsert_rental_pricing
 from ...repositories.rental_request_repo import list_rental_requests
+from ...repositories.rental_discount_repo import (
+    list_rental_discount_rules,
+    create_rental_discount_rule,
+    update_rental_discount_rule,
+)
 from ...repositories.rental_service_repo import (
     list_rental_services,
     create_rental_service,
@@ -773,18 +778,22 @@ def rental_pricing():
         return redirect(url_for("ui.dashboard"))
     pricing_rows = list_rental_pricing()
     services = list_rental_services(include_inactive=True)
+    discount_rules = list_rental_discount_rules()
     pricing_types = [
         "per_booking",
         "per_day",
         "per_hour",
         "per_unit",
     ]
+    discount_types = ["percent", "amount"]
     return render_template(
         "admin/rental_pricing.html",
         active_menu="admin_rental_pricing",
         pricing_rows=pricing_rows,
         services=services,
         pricing_types=pricing_types,
+        discount_rules=discount_rules,
+        discount_types=discount_types,
     )
 
 
@@ -819,6 +828,8 @@ def rental_pricing_actions():
                 tax_rate=tax_rate,
                 updated_by=current_user.user_id,
             )
+            if request.headers.get("X-Requested-With") == "fetch":
+                return {"ok": True}
             flash("rental pricing updated", "success")
     elif action == "service_create":
         code = (request.form.get("code") or "").strip()
@@ -854,6 +865,56 @@ def rental_pricing_actions():
                 is_active,
             )
             flash("rental service updated", "success")
+    elif action == "discount_create":
+        vehicle_id = _parse_int(request.form.get("vehicle_id"))
+        min_days = _parse_int(request.form.get("min_days"), 1) or 1
+        max_days = _parse_int(request.form.get("max_days"))
+        discount_type = (request.form.get("discount_type") or "").strip()
+        discount_value = _parse_int(request.form.get("discount_value"), 0) or 0
+        priority = _parse_int(request.form.get("priority"), 100) or 100
+        is_active = request.form.get("is_active") == "1"
+        valid_from = request.form.get("valid_from") or None
+        valid_to = request.form.get("valid_to") or None
+        if vehicle_id and discount_type:
+            create_rental_discount_rule(
+                vehicle_id,
+                min_days,
+                max_days,
+                discount_type,
+                discount_value,
+                priority,
+                is_active,
+                valid_from,
+                valid_to,
+            )
+            flash("rental discount created", "success")
+        else:
+            flash("missing required discount fields", "warning")
+    elif action == "discount_update":
+        rule_id = _parse_int(request.form.get("rule_id"))
+        vehicle_id = _parse_int(request.form.get("vehicle_id"))
+        min_days = _parse_int(request.form.get("min_days"), 1) or 1
+        max_days = _parse_int(request.form.get("max_days"))
+        discount_type = (request.form.get("discount_type") or "").strip()
+        discount_value = _parse_int(request.form.get("discount_value"), 0) or 0
+        priority = _parse_int(request.form.get("priority"), 100) or 100
+        is_active = request.form.get("is_active") == "1"
+        valid_from = request.form.get("valid_from") or None
+        valid_to = request.form.get("valid_to") or None
+        if rule_id and vehicle_id and discount_type:
+            update_rental_discount_rule(
+                rule_id,
+                vehicle_id,
+                min_days,
+                max_days,
+                discount_type,
+                discount_value,
+                priority,
+                is_active,
+                valid_from,
+                valid_to,
+            )
+            flash("rental discount updated", "success")
     return redirect(url_for("admin.rental_pricing", lang=request.args.get("lang")))
 
 

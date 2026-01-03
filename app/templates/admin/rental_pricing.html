@@ -9,7 +9,6 @@
     <table class="table table-sm align-middle">
       <thead>
         <tr>
-          <th>ID</th>
           <th>{{ t('admin_rental_pricing.vehicle_label') }}</th>
           <th>{{ t('admin_rental_pricing.daily_price') }}</th>
           <th>{{ t('admin_rental_pricing.deposit_amount') }}</th>
@@ -26,10 +25,9 @@
       <tbody>
         {% for row in pricing_rows %}
         <tr>
-          <form method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}">
+          <form method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}" data-ajax="pricing">
             <input type="hidden" name="action" value="pricing_update">
             <input type="hidden" name="vehicle_id" value="{{ row.vehicle_id }}">
-            <td>{{ row.vehicle_id }}</td>
             <td>
               <div class="fw-semibold">{{ (row.brand_jp if lang == 'jp' else row.brand_cn) or '-' }} / {{ (row.model_jp if lang == 'jp' else row.model_cn) or '-' }}</div>
               <div class="text-muted small">VIN {{ row.vin or '-' }} · {{ row.model_year_ad or '-' }}</div>
@@ -44,15 +42,18 @@
             <td><input class="form-control form-control-sm" name="tax_rate" value="{{ row.tax_rate or '' }}"></td>
             <td><input class="form-control form-control-sm" name="currency" value="{{ row.currency or 'JPY' }}"></td>
             <td>
-              <button class="btn btn-outline-primary btn-sm">
+              <div class="d-flex flex-column gap-1">
+                <button class="btn btn-outline-primary btn-sm">
                 {{ t('admin_rental_pricing.update') }}
-              </button>
+                </button>
+                <span class="text-success small d-none" data-status="pricing">{{ t('admin_rental_pricing.saved') }}</span>
+              </div>
             </td>
           </form>
         </tr>
         {% else %}
         <tr>
-          <td colspan="12" class="text-muted">{{ t('admin_rental_pricing.empty') }}</td>
+          <td colspan="11" class="text-muted">{{ t('admin_rental_pricing.empty') }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -162,4 +163,156 @@
     </table>
   </div>
 </div>
+
+<div class="card p-3 mt-4">
+  <h5 class="mb-3">{{ t('admin_rental_pricing.discount_title') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}">
+    <input type="hidden" name="action" value="discount_create">
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_rental_pricing.vehicle_label') }}</label>
+      <select class="form-select" name="vehicle_id">
+        {% for row in pricing_rows %}
+          <option value="{{ row.vehicle_id }}">
+            {{ (row.brand_jp if lang == 'jp' else row.brand_cn) or '-' }} / {{ (row.model_jp if lang == 'jp' else row.model_cn) or '-' }} · {{ row.model_year_ad or '-' }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.min_days') }}</label>
+      <input class="form-control" name="min_days" value="1">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.max_days') }}</label>
+      <input class="form-control" name="max_days" placeholder="-" >
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.discount_type') }}</label>
+      <select class="form-select" name="discount_type">
+        {% for discount_type in discount_types %}
+          <option value="{{ discount_type }}">{{ t('admin_rental_pricing.discount_type_' + discount_type) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.discount_value') }}</label>
+      <input class="form-control" name="discount_value">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_rental_pricing.priority') }}</label>
+      <input class="form-control" name="priority" value="100">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.valid_from') }}</label>
+      <input class="form-control" type="date" name="valid_from">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.valid_to') }}</label>
+      <input class="form-control" type="date" name="valid_to">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_rental_pricing.active_yes') }}</option>
+        <option value="0">{{ t('admin_rental_pricing.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-12 d-flex justify-content-end">
+      <button class="btn btn-primary">{{ t('admin_rental_pricing.create') }}</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>{{ t('admin_rental_pricing.vehicle_label') }}</th>
+          <th>{{ t('admin_rental_pricing.range_days') }}</th>
+          <th>{{ t('admin_rental_pricing.discount_type') }}</th>
+          <th>{{ t('admin_rental_pricing.discount_value') }}</th>
+          <th>{{ t('admin_rental_pricing.priority') }}</th>
+          <th>{{ t('admin_rental_pricing.valid_from') }}</th>
+          <th>{{ t('admin_rental_pricing.valid_to') }}</th>
+          <th>{{ t('admin_rental_pricing.active') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in discount_rules %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}">
+            <input type="hidden" name="action" value="discount_update">
+            <input type="hidden" name="rule_id" value="{{ rule.id }}">
+            <td>
+              <select class="form-select form-select-sm" name="vehicle_id">
+                {% for row in pricing_rows %}
+                  <option value="{{ row.vehicle_id }}" {% if row.vehicle_id == rule.vehicle_id %}selected{% endif %}>
+                    {{ (row.brand_jp if lang == 'jp' else row.brand_cn) or '-' }} / {{ (row.model_jp if lang == 'jp' else row.model_cn) or '-' }} · {{ row.model_year_ad or '-' }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <input class="form-control form-control-sm" name="min_days" value="{{ rule.min_days }}">
+                <span class="text-muted small align-self-center">~</span>
+                <input class="form-control form-control-sm" name="max_days" value="{{ rule.max_days or '' }}">
+              </div>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" name="discount_type">
+                {% for discount_type in discount_types %}
+                  <option value="{{ discount_type }}" {% if rule.discount_type == discount_type %}selected{% endif %}>
+                    {{ t('admin_rental_pricing.discount_type_' + discount_type) }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input class="form-control form-control-sm" name="discount_value" value="{{ rule.discount_value }}"></td>
+            <td><input class="form-control form-control-sm" name="priority" value="{{ rule.priority }}"></td>
+            <td><input class="form-control form-control-sm" type="date" name="valid_from" value="{{ rule.valid_from or '' }}"></td>
+            <td><input class="form-control form-control-sm" type="date" name="valid_to" value="{{ rule.valid_to or '' }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if rule.is_active %}selected{% endif %}>{{ t('admin_rental_pricing.active_yes') }}</option>
+                <option value="0" {% if not rule.is_active %}selected{% endif %}>{{ t('admin_rental_pricing.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm">
+                {{ t('admin_rental_pricing.update') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-muted">{{ t('admin_rental_pricing.empty_discounts') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('form[data-ajax=\"pricing\"]').forEach((form) => {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const status = form.querySelector('[data-status=\"pricing\"]');
+      if (status) {
+        status.classList.add('d-none');
+      }
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'fetch' },
+        body: new FormData(form),
+      });
+      if (response.ok && status) {
+        status.classList.remove('d-none');
+        setTimeout(() => status.classList.add('d-none'), 2000);
+      }
+    });
+  });
+</script>
 {% endblock %}

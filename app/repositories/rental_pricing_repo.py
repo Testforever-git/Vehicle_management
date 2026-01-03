@@ -29,6 +29,21 @@ def list_rental_pricing():
     )
 
 
+def list_rental_pricing_for_vehicle_ids(vehicle_ids: list[int]):
+    if not vehicle_ids:
+        return {}
+    placeholders = ", ".join(["%s"] * len(vehicle_ids))
+    rows = fetch_all(
+        f"""
+        SELECT vehicle_id, daily_price, currency
+        FROM rental_vehicle_pricing
+        WHERE vehicle_id IN ({placeholders})
+        """,
+        tuple(vehicle_ids),
+    )
+    return {row["vehicle_id"]: row for row in rows}
+
+
 def get_rental_pricing(vehicle_id: int):
     return fetch_one(
         """

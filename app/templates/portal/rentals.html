@@ -27,6 +27,18 @@
               {{ t('portal.rentals_mileage') }}:
               {{ v.mileage if v.mileage is not none else '-' }} km
             </div>
+            <div class="text-muted small">
+              {{ t('portal.rentals_year') }}:
+              {{ v.model_year_ad or '-' }}
+            </div>
+            <div class="text-muted small">
+              {{ t('portal.rentals_base_price') }}:
+              {% if v.daily_price is not none %}
+                {{ v.daily_price }} {{ t('portal.rental_price_unit') }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
           </div>
         </div>
       </a>

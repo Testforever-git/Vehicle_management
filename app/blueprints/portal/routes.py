@@ -8,7 +8,7 @@ from . import bp
 from ...repositories.vehicle_repo import list_vehicles, get_vehicle_i18n, get_status
 from ...repositories.vehicle_media_repo import list_vehicle_media
 from ...repositories.customer_repo import get_customer_by_identity, update_customer_last_login
-from ...repositories.rental_pricing_repo import get_rental_pricing
+from ...repositories.rental_pricing_repo import get_rental_pricing, list_rental_pricing_for_vehicle_ids
 from ...repositories.rental_service_repo import list_rental_services
 from ...repositories.rental_request_repo import create_rental_request
 from ...security.customers import get_current_customer, login_customer, logout_customer
@@ -70,11 +70,12 @@ def _issue_customer_code(identifier: str):
     return DEFAULT_CUSTOMER_CODE
 
 
-def _build_public_vehicle_card(vehicle_row: dict) -> dict:
+def _build_public_vehicle_card(vehicle_row: dict, pricing_map: dict) -> dict:
     vehicle_id = vehicle_row["id"]
     photo_rows = list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE)
     cover_filename = _select_cover_filename(photo_rows)
     status = get_status(vehicle_id) or {}
+    pricing = pricing_map.get(vehicle_id) if pricing_map else {}
     return {
         "id": vehicle_id,
         "vin": vehicle_row.get("vin"),
@@ -82,8 +83,10 @@ def _build_public_vehicle_card(vehicle_row: dict) -> dict:
         "brand_jp": vehicle_row.get("brand_jp"),
         "model_cn": vehicle_row.get("model_cn"),
         "model_jp": vehicle_row.get("model_jp"),
+        "model_year_ad": vehicle_row.get("model_year_ad"),
         "mileage": status.get("mileage"),
         "cover_filename": cover_filename,
+        "daily_price": pricing.get("daily_price") if pricing else None,
     }
 
 
@@ -120,7 +123,9 @@ def portal_trade():
 @bp.get("/portal/rentals")
 def portal_rentals():
     vehicles, _ = list_vehicles(page=1, per_page=500)
-    cards = [_build_public_vehicle_card(row) for row in vehicles]
+    vehicle_ids = [row["id"] for row in vehicles]
+    pricing_map = list_rental_pricing_for_vehicle_ids(vehicle_ids)
+    cards = [_build_public_vehicle_card(row, pricing_map) for row in vehicles]
     return render_template("portal/rentals.html", active_menu="portal", vehicles=cards)
 
 
@@ -280,6 +285,7 @@ def portal_rental_detail(vehicle_id: int):
         vehicle_photos=photo_items,
         rental_services=rental_services,
         submitted=request.args.get("submitted") == "1",
+        error=request.args.get("error"),
     )
 
 
@@ -305,18 +311,19 @@ def portal_rental_request(vehicle_id: int):
         except ValueError:
             return None
 
-    if start_date and end_date:
-        create_rental_request(
-            vehicle_id=vehicle_id,
-            customer_id=customer.customer_id,
-            start_date=start_date,
-            end_date=end_date,
-            delivery_lat=_to_float(delivery_lat),
-            delivery_lng=_to_float(delivery_lng),
-            delivery_address=delivery_address,
-            service_ids=service_ids,
-            note=note,
-        )
+    if not start_date or not end_date:
+        return redirect(url_for("portal.portal_rental_detail", vehicle_id=vehicle_id, lang=request.args.get("lang"), error="dates"))
+    create_rental_request(
+        vehicle_id=vehicle_id,
+        customer_id=customer.customer_id,
+        start_date=start_date,
+        end_date=end_date,
+        delivery_lat=_to_float(delivery_lat),
+        delivery_lng=_to_float(delivery_lng),
+        delivery_address=delivery_address,
+        service_ids=service_ids,
+        note=note,
+    )
     return redirect(url_for("portal.portal_rental_detail", vehicle_id=vehicle_id, lang=request.args.get("lang"), submitted=1))
 
 

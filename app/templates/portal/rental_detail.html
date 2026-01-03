@@ -48,14 +48,6 @@
       <h5 class="mb-2">{{ brand_label }} / {{ model_label }}</h5>
       <div class="text-muted">{{ t('portal.rentals_mileage') }}: {{ status.mileage if status.mileage is not none else '-' }} km</div>
       <div class="text-muted">{{ t('portal.rental_year_label') }}: {{ vehicle.model_year_ad or '-' }}</div>
-      <div class="text-muted">
-        {{ t('portal.rental_base_price_label') }}:
-        {% if pricing and pricing.daily_price is not none %}
-          {{ pricing.daily_price }} {{ t('portal.rental_price_unit') }}
-        {% else %}
-          -
-        {% endif %}
-      </div>
     </div>
     <div class="card p-3">
       <h5 class="mb-2">{{ t('portal.rental_description_title') }}</h5>
@@ -66,9 +58,33 @@
       {% endif %}
     </div>
     <div class="card p-3 mt-3">
+      <h5 class="mb-3">{{ t('portal.rental_pricing_title') }}</h5>
+      <div class="row g-2 small">
+        <div class="col-6 text-muted">{{ t('portal.rental_base_price_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.daily_price if pricing and pricing.daily_price is not none else '-' }} {{ t('portal.rental_price_unit') }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_deposit_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.deposit_amount if pricing and pricing.deposit_amount is not none else '-' }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_insurance_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.insurance_per_day if pricing and pricing.insurance_per_day is not none else '-' }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_free_km_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.free_km_per_day if pricing and pricing.free_km_per_day is not none else '-' }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_extra_km_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.extra_km_price if pricing and pricing.extra_km_price is not none else '-' }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_cleaning_fee_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.cleaning_fee if pricing and pricing.cleaning_fee is not none else '-' }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_late_fee_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.late_fee_per_day if pricing and pricing.late_fee_per_day is not none else '-' }}</div>
+        <div class="col-6 text-muted">{{ t('portal.rental_tax_rate_label') }}</div>
+        <div class="col-6 text-end">{{ pricing.tax_rate if pricing and pricing.tax_rate is not none else '-' }}%</div>
+      </div>
+    </div>
+    <div class="card p-3 mt-3">
       <h5 class="mb-3">{{ t('portal.rental_apply_section_title') }}</h5>
       {% if submitted %}
         <div class="alert alert-success">{{ t('portal.rental_submit_success') }}</div>
+      {% endif %}
+      {% if error == 'dates' %}
+        <div class="alert alert-warning">{{ t('portal.rental_date_required') }}</div>
       {% endif %}
       {% if not current_customer.is_authenticated %}
         <div class="alert alert-warning">{{ t('portal.rental_login_hint') }}</div>
@@ -151,7 +167,8 @@
         map.removeLayer(marker);
       }
       marker = L.marker([lat, lng]).addTo(map);
-      map.setView([lat, lng], 13);
+      const zoom = map.getZoom();
+      map.setView([lat, lng], zoom);
       if (latInput && lngInput) {
         latInput.value = lat.toFixed(6);
         lngInput.value = lng.toFixed(6);
