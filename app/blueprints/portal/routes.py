@@ -8,7 +8,7 @@ from . import bp
 from ...repositories.vehicle_repo import list_vehicles, get_vehicle_i18n, get_status
 from ...repositories.vehicle_media_repo import list_vehicle_media
 from ...repositories.customer_repo import get_customer_by_identity, update_customer_last_login
-from ...security.customers import get_current_customer, login_customer
+from ...security.customers import get_current_customer, login_customer, logout_customer
 from ...security.users import get_current_user
 
 PHOTO_FILE_TYPE = "photo"
@@ -164,6 +164,14 @@ def portal_customer_login():
         active_menu="portal",
         next_endpoint=request.args.get("next") or "portal.portal_home",
     )
+
+
+@bp.get("/portal/customer-logout")
+def portal_customer_logout():
+    logout_customer()
+    session.pop("customer_login_code", None)
+    session.pop("customer_login_identifier", None)
+    return redirect(url_for("portal.portal_home", lang=request.args.get("lang")))
 
 
 @bp.post("/portal/customer-login")

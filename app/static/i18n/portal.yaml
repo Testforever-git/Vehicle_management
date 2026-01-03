@@ -68,6 +68,7 @@ jp:
   customer_login_code_error: "認証コードが一致しません。"
   customer_login_code_sent: "認証コードを発行しました:"
   customer_login_status: "ログイン中:"
+  customer_logout: "ログアウト"
 cn:
   brand: "Auto Connect"
   nav:
@@ -138,3 +139,4 @@ cn:
   customer_login_code_error: "验证码不正确。"
   customer_login_code_sent: "验证码已生成:"
   customer_login_status: "已登录:"
+  customer_logout: "退出登录"

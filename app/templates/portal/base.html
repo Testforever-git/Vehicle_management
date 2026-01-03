@@ -51,6 +51,11 @@
           <li class="nav-item d-flex align-items-center">
             <span class="nav-link ac-text-meta">{{ t('portal.customer_login_status') }} {{ current_customer.display_name }}</span>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('portal.portal_customer_logout', lang=lang) }}">
+              {{ t('portal.customer_logout') }}
+            </a>
+          </li>
           {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="portalLangDropdown"
