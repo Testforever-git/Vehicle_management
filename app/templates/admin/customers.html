@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_customers.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>{{ t('admin_customers.customer_no') }}</th>
+          <th>{{ t('admin_customers.display_name') }}</th>
+          <th>{{ t('admin_customers.customer_type') }}</th>
+          <th>{{ t('admin_customers.status') }}</th>
+          <th>{{ t('admin_customers.last_login_at') }}</th>
+          <th>{{ t('admin_customers.created_at') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customer in customers %}
+          <tr>
+            <td>{{ customer.customer_no }}</td>
+            <td>{{ customer.display_name or customer.full_name or '-' }}</td>
+            <td>{{ customer.customer_type }}</td>
+            <td>{{ customer.status }}</td>
+            <td>{{ customer.last_login_at or '-' }}</td>
+            <td>{{ customer.created_at }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-muted text-center">{{ t('admin_customers.empty') }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

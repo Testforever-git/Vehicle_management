@@ -9,6 +9,7 @@ def ensure_schema():
     _seed_roles()
     _seed_role_permissions()
     _seed_users()
+    _seed_customers()
     _seed_field_permissions()
 
 
@@ -149,6 +150,53 @@ def _create_tables():
         """
     )
 
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS customer (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          customer_no VARCHAR(32) NOT NULL COMMENT '客户编号(业务展示用，可用规则生成)',
+          customer_type ENUM('personal','company') NOT NULL DEFAULT 'personal',
+          display_name VARCHAR(128) DEFAULT NULL,
+          full_name VARCHAR(128) DEFAULT NULL,
+          full_name_kana VARCHAR(128) DEFAULT NULL,
+          birthday DATE DEFAULT NULL,
+          gender ENUM('unknown','male','female','other') NOT NULL DEFAULT 'unknown',
+          status ENUM('active','suspended','deleted') NOT NULL DEFAULT 'active',
+          last_login_at DATETIME DEFAULT NULL,
+          created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_customer_no (customer_no),
+          KEY idx_customer_type (customer_type),
+          KEY idx_customer_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS customer_auth_identity (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          customer_id BIGINT UNSIGNED NOT NULL,
+          identity_type ENUM('email','phone','oauth') NOT NULL,
+          identifier VARCHAR(255) NOT NULL COMMENT '邮箱/手机号/三方openid等',
+          is_primary TINYINT(1) NOT NULL DEFAULT 0,
+          verified_at DATETIME DEFAULT NULL,
+          provider VARCHAR(32) DEFAULT NULL COMMENT 'oauth provider: google/apple/line等',
+          provider_uid VARCHAR(255) DEFAULT NULL COMMENT 'provider user id',
+          created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_identity (identity_type, identifier),
+          KEY idx_customer_id (customer_id),
+          KEY idx_customer_primary (customer_id, is_primary),
+          CONSTRAINT fk_customer_auth_identity_customer
+            FOREIGN KEY (customer_id) REFERENCES customer(id)
+            ON DELETE RESTRICT ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
 
 def _create_views():
     execute(
@@ -266,6 +314,31 @@ def _seed_users():
             """,
             (username, password_hash, role_id, full_name),
         )
+
+
+def _seed_customers():
+    customers = [
+        ("CUST-0001", "personal", "测试客户", "测试客户", "test@example.com"),
+    ]
+    for customer_no, customer_type, display_name, full_name, email in customers:
+        execute(
+            """
+            INSERT IGNORE INTO customer
+              (customer_no, customer_type, display_name, full_name, status)
+            VALUES (%s, %s, %s, %s, 'active')
+            """,
+            (customer_no, customer_type, display_name, full_name),
+        )
+        row = fetch_one("SELECT id FROM customer WHERE customer_no = %s", (customer_no,))
+        if row:
+            execute(
+                """
+                INSERT IGNORE INTO customer_auth_identity
+                  (customer_id, identity_type, identifier, is_primary, verified_at)
+                VALUES (%s, 'email', %s, 1, NOW())
+                """,
+                (row["id"], email),
+            )
 
 
 def _seed_field_permissions():

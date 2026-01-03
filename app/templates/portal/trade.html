@@ -3,21 +3,6 @@
 {% block page_title %}{{ t('portal.trade_page_title') }}{% endblock %}
 
 {% block content %}
-<ul class="nav nav-pills mb-4">
-  <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('portal.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('portal.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('portal.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link active" href="{{ url_for('portal.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
-  </li>
-</ul>
-
 <div class="card p-4">
   <p class="ac-text-body">{{ t('portal.trade_intro') }}</p>
   <h5 class="mt-3">{{ t('portal.trade_steps_title') }}</h5>
@@ -29,5 +14,8 @@
   <div class="alert alert-info mb-0">
     {{ t('portal.trade_contact_hint') }}
   </div>
+  <a class="btn btn-primary mt-3" href="{{ url_for('portal.portal_trade_apply', lang=lang) }}">
+    {{ t('portal.trade_apply_cta') }}
+  </a>
 </div>
 {% endblock %}

@@ -1,0 +1,18 @@
+jp:
+  page_title: "顧客管理"
+  customer_no: "顧客番号"
+  display_name: "表示名"
+  customer_type: "種別"
+  status: "ステータス"
+  last_login_at: "最終ログイン"
+  created_at: "作成日"
+  empty: "顧客データがありません。"
+cn:
+  page_title: "客户管理"
+  customer_no: "客户编号"
+  display_name: "显示名称"
+  customer_type: "类型"
+  status: "状态"
+  last_login_at: "上次登录"
+  created_at: "创建时间"
+  empty: "暂无客户数据。"
