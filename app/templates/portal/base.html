@@ -69,6 +69,11 @@
 
   <main class="container py-3">
     <h1 class="ac-title-main mb-3">{% block page_title %}{% endblock %}</h1>
+    {% if current_customer and current_customer.is_authenticated %}
+      <div class="alert alert-success py-2 mb-3">
+        {{ t('portal.customer_login_status') }} {{ current_customer.display_name }}
+      </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
