@@ -1,0 +1,40 @@
+{% extends 'portal/base.html' %}
+
+{% block page_title %}{{ t('portal.customer_login_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-4" style="max-width: 520px;">
+  <p class="text-muted">{{ t('portal.customer_login_hint') }}</p>
+  <form method="post" action="{{ url_for('portal.portal_customer_login', lang=lang, next=next_endpoint) }}">
+    <div class="mb-3">
+      <label class="form-label" for="customer-identifier">{{ t('portal.customer_login_label') }}</label>
+      <input class="form-control" id="customer-identifier" name="identifier" value="{{ identifier or '' }}" placeholder="name@example.com" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="customer-code">{{ t('portal.customer_login_code_label') }}</label>
+      <input class="form-control" id="customer-code" name="code" placeholder="123321">
+    </div>
+    <input type="hidden" name="next" value="{{ next_endpoint }}">
+    {% if error == 'missing' %}
+      <div class="alert alert-warning">{{ t('portal.customer_login_missing') }}</div>
+    {% elif error == 'format' %}
+      <div class="alert alert-warning">{{ t('portal.customer_login_format') }}</div>
+    {% elif error == 'invalid' %}
+      <div class="alert alert-danger">{{ t('portal.customer_login_invalid') }}</div>
+    {% elif error == 'code' %}
+      <div class="alert alert-danger">{{ t('portal.customer_login_code_error') }}</div>
+    {% endif %}
+    {% if code_sent %}
+      <div class="alert alert-info">{{ t('portal.customer_login_code_sent') }} {{ code_value }}</div>
+    {% endif %}
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary" type="submit" name="action" value="send_code">
+        {{ t('portal.customer_login_send_code') }}
+      </button>
+      <button class="btn btn-primary" type="submit" name="action" value="login">
+        {{ t('portal.customer_login_submit') }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
