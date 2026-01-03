@@ -33,7 +33,7 @@
 
         {% if can('admin','view') %}
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','field_permissions','admin_dictionaries','audit_log'] %}active{% endif %}"
+          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','admin_customers','field_permissions','admin_dictionaries','audit_log'] %}active{% endif %}"
              href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             {{ t('nav.admin') }}
           </a>
@@ -41,6 +41,11 @@
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.user_list', lang=lang) }}">
                 {{ t('nav.admin_users') }}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="{{ url_for('admin.customer_list', lang=lang) }}">
+                {{ t('nav.admin_customers') }}
               </a>
             </li>
             <li>
