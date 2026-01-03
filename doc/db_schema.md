@@ -354,5 +354,285 @@ WHERE table_schema = DATABASE()
   password
   charset
 
-## 杂项
-- 字段区分中日文时，必须以_cn 和 _jp结尾
+## 11.customer
+- 用户管理表
+customer（客户主档）
+用途：客户“是谁”，以及少量展示字段。不存验证码、不存积分流水、不存复杂权益。
+
+CREATE TABLE customer (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  customer_no VARCHAR(32) NOT NULL COMMENT '客户编号(业务展示用，可用规则生成)',
+  customer_type ENUM('personal','company') NOT NULL DEFAULT 'personal',
+
+  display_name VARCHAR(128) DEFAULT NULL,
+  full_name VARCHAR(128) DEFAULT NULL,
+  full_name_kana VARCHAR(128) DEFAULT NULL,
+
+  -- 个人车主为主：可选信息
+  birthday DATE DEFAULT NULL,
+  gender ENUM('unknown','male','female','other') NOT NULL DEFAULT 'unknown',
+
+  -- 合规与运营
+  status ENUM('active','suspended','deleted') NOT NULL DEFAULT 'active',
+  last_login_at DATETIME DEFAULT NULL,
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_customer_no (customer_no),
+  KEY idx_customer_type (customer_type),
+  KEY idx_customer_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+- customer_auth_identity（登录身份表）
+用途：让一个客户可以有多个登录方式（email/phone），并支持未来三方登录。
+主流做法：email/phone 不直接塞 customer 表，而是 identity 表管理，并标记 primary。
+
+CREATE TABLE customer_auth_identity (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  customer_id BIGINT UNSIGNED NOT NULL,
+
+  identity_type ENUM('email','phone','oauth') NOT NULL,
+  identifier VARCHAR(255) NOT NULL COMMENT '邮箱/手机号/三方openid等',
+
+  is_primary TINYINT(1) NOT NULL DEFAULT 0,
+  verified_at DATETIME DEFAULT NULL,
+
+  -- 用于 oauth 扩展
+  provider VARCHAR(32) DEFAULT NULL COMMENT 'oauth provider: google/apple/line等',
+  provider_uid VARCHAR(255) DEFAULT NULL COMMENT 'provider user id',
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_identity (identity_type, identifier),
+  KEY idx_customer_id (customer_id),
+  KEY idx_customer_primary (customer_id, is_primary),
+
+  CONSTRAINT fk_customer_auth_identity_customer
+    FOREIGN KEY (customer_id) REFERENCES customer(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+运营建议：
+同一个 customer_id 最多一个 is_primary=1（可在应用层保证；如需数据库强约束可用 generated column + unique trick，后面再加）
+
+- customer_verification_code（验证码）
+
+用途：注册/登录/找回/换绑的验证码，支持短信和邮件。 
+注: 目前无法实现发送sms和邮件进行认证的功能，仅保留接口
+
+CREATE TABLE customer_verification_code (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+  target VARCHAR(255) NOT NULL COMMENT '手机号或邮箱(与identity.identifier一致)',
+  channel ENUM('sms','email') NOT NULL,
+  purpose ENUM('register','login','reset','change_contact') NOT NULL,
+
+  code VARCHAR(16) NOT NULL,
+  expired_at DATETIME NOT NULL,
+  used_at DATETIME DEFAULT NULL,
+
+  -- 风控与排障
+  created_ip VARCHAR(64) DEFAULT NULL,
+  user_agent VARCHAR(255) DEFAULT NULL,
+  attempts INT NOT NULL DEFAULT 0 COMMENT '验证失败次数(可选)',
+  sent_count INT NOT NULL DEFAULT 1 COMMENT '同一记录的发送次数(可选)',
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY idx_target (target),
+  KEY idx_target_purpose (target, purpose),
+  KEY idx_expired (expired_at),
+  KEY idx_channel_purpose (channel, purpose)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- member_tier（会员等级字典）
+用途：会员分级与权益参数（先用 JSON 预留，后期可拆规则表）。
+注: 目前无计划上线会员，仅保留接口
+CREATE TABLE member_tier (
+  code VARCHAR(32) NOT NULL,
+  name_ja VARCHAR(64) NOT NULL,
+  name_zh VARCHAR(64) NOT NULL,
+  rank_no INT NOT NULL COMMENT '等级排序(数字越大等级越高)',
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+
+  -- 预留：升级条件、折扣、权益等
+  upgrade_rule_json JSON DEFAULT NULL,
+  benefit_json JSON DEFAULT NULL,
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (code),
+  UNIQUE KEY uq_rank_no (rank_no),
+  KEY idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- customer_membership（客户会员快照）
+用途：记录“这个客户当前是什么会员”，以及积分余额/累计消费快照（可选）。
+说明：积分余额可以放这里作为快照，但以流水为准。
+注: 目前无计划上线会员，仅保留接口
+
+CREATE TABLE customer_membership (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  customer_id BIGINT UNSIGNED NOT NULL,
+
+  tier_code VARCHAR(32) NOT NULL DEFAULT 'normal',
+  member_since DATE DEFAULT NULL,
+  member_until DATE DEFAULT NULL COMMENT '如有有效期会员可用',
+
+  points_balance INT NOT NULL DEFAULT 0,
+  lifetime_spend_yen BIGINT UNSIGNED NOT NULL DEFAULT 0,
+
+  status ENUM('active','frozen','ended') NOT NULL DEFAULT 'active',
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_customer_membership (customer_id),
+  KEY idx_tier (tier_code),
+  KEY idx_status (status),
+
+  CONSTRAINT fk_customer_membership_customer
+    FOREIGN KEY (customer_id) REFERENCES customer(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+
+  CONSTRAINT fk_customer_membership_tier
+    FOREIGN KEY (tier_code) REFERENCES member_tier(code)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- customer_points_ledger（积分流水）
+用途：对账、审计、退款回滚、人工调整。只存余额会必踩坑，主流系统一定有流水。
+注: 目前无计划上线会员，仅保留接口
+CREATE TABLE customer_points_ledger (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  customer_id BIGINT UNSIGNED NOT NULL,
+
+  direction ENUM('earn','spend','expire','adjust','refund') NOT NULL,
+  points INT NOT NULL COMMENT '正数；direction 决定增减',
+  balance_after INT DEFAULT NULL COMMENT '可选：写入变更后余额快照，便于审计',
+
+  reason_code VARCHAR(32) DEFAULT NULL COMMENT '规则/原因编码(可选)',
+  ref_type VARCHAR(32) DEFAULT NULL COMMENT '关联对象类型(如 repair_order/rental/...)',
+  ref_id BIGINT UNSIGNED DEFAULT NULL COMMENT '关联对象ID(可选)',
+
+  note VARCHAR(255) DEFAULT NULL,
+  operator_user_id BIGINT UNSIGNED DEFAULT NULL COMMENT '内部操作人(user.id)，自动系统可为空',
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY idx_customer_time (customer_id, created_at),
+  KEY idx_ref (ref_type, ref_id),
+
+  CONSTRAINT fk_points_ledger_customer
+    FOREIGN KEY (customer_id) REFERENCES customer(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- communication_log（短信/邮件发送日志）
+
+用途：排查“客户收不到验证码/通知”时的关键证据；也可用于统计成本。
+
+CREATE TABLE communication_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+
+  customer_id BIGINT UNSIGNED DEFAULT NULL,
+  channel ENUM('sms','email') NOT NULL,
+  purpose ENUM('verification','notice','marketing') NOT NULL,
+
+  target VARCHAR(255) NOT NULL COMMENT '手机号或邮箱',
+  template_code VARCHAR(64) DEFAULT NULL,
+  content_preview VARCHAR(255) DEFAULT NULL COMMENT '内容摘要(避免存敏感完整内容)',
+  provider VARCHAR(64) DEFAULT NULL COMMENT 'twilio/sns/ses/sendgrid等',
+  provider_message_id VARCHAR(128) DEFAULT NULL,
+
+  status ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
+  error_code VARCHAR(64) DEFAULT NULL,
+  error_message VARCHAR(255) DEFAULT NULL,
+
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  sent_at DATETIME DEFAULT NULL,
+
+  PRIMARY KEY (id),
+  KEY idx_customer_time (customer_id, created_at),
+  KEY idx_target_time (target, created_at),
+  KEY idx_status_time (status, created_at),
+
+  CONSTRAINT fk_communication_log_customer
+    FOREIGN KEY (customer_id) REFERENCES customer(id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- 业务规则（写进开发指引的“必须遵守”）
+identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_identity 保证）。
+验证码有效期：5–10 分钟；用过必须写 used_at；验证失败次数/频率限制由应用层实现。
+积分以流水为准：customer_membership.points_balance 允许做快照，但必须能从 customer_points_ledger 复算。
+通知必须记录 log：验证码/重要通知必须写 communication_log，否则排障困难。
+软删除：客户删号/合规删除优先 status='deleted'，历史订单/工单引用不应断。
+
+
+## 100.其他相关表格。
+- brand字典
+  md_brand | CREATE TABLE `md_brand` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `brand_code` varchar(32) NOT NULL,
+  `name_jp` varchar(64) NOT NULL,
+  `name_cn` varchar(64) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_brand_code` (`brand_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+- model字典
+  md_model | CREATE TABLE `md_model` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `brand_id` int NOT NULL,
+  `model_code` varchar(64) NOT NULL,
+  `name_jp` varchar(64) NOT NULL,
+  `name_cn` varchar(64) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_brand_model_code` (`brand_id`,`model_code`),
+  KEY `idx_model_brand` (`brand_id`,`is_active`,`sort_order`),
+  CONSTRAINT `fk_model_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+- 颜色字典
+  md_color | CREATE TABLE `md_color` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `color_code` varchar(32) NOT NULL,
+  `name_jp` varchar(32) NOT NULL,
+  `name_cn` varchar(32) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_color_code` (`color_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+- FF/FW/RWD等字典
+  md_enum | CREATE TABLE `md_enum` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `enum_type` varchar(32) NOT NULL,
+  `enum_code` varchar(32) NOT NULL,
+  `name_jp` varchar(64) NOT NULL,
+  `name_cn` varchar(64) NOT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_enum` (`enum_type`,`enum_code`),
+  KEY `idx_enum_type` (`enum_type`,`is_active`,`sort_order`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
