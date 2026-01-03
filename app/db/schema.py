@@ -318,9 +318,9 @@ def _seed_users():
 
 def _seed_customers():
     customers = [
-        ("CUST-0001", "personal", "测试客户", "测试客户", "test@example.com"),
+        ("CUST-0001", "personal", "测试客户", "测试客户", "test@example.com", "+819012345678"),
     ]
-    for customer_no, customer_type, display_name, full_name, email in customers:
+    for customer_no, customer_type, display_name, full_name, email, phone in customers:
         execute(
             """
             INSERT IGNORE INTO customer
@@ -339,6 +339,15 @@ def _seed_customers():
                 """,
                 (row["id"], email),
             )
+            if phone:
+                execute(
+                    """
+                    INSERT IGNORE INTO customer_auth_identity
+                      (customer_id, identity_type, identifier, is_primary, verified_at)
+                    VALUES (%s, 'phone', %s, 1, NOW())
+                    """,
+                    (row["id"], phone),
+                )
 
 
 def _seed_field_permissions():

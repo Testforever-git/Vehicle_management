@@ -3,36 +3,127 @@
 {% block page_title %}{{ t('admin_customers.page_title') }}{% endblock %}
 
 {% block content %}
-<div class="card p-3">
+<div class="card p-3 mb-3">
+  <form method="get" action="{{ url_for('admin.customer_list', lang=lang) }}" class="row g-2">
+    <div class="col-md-3">
+      <label class="form-label ac-field-label">{{ t('admin_customers.per_page_label') }}</label>
+      <select class="form-select ac-input" name="per_page">
+        <option value="20" {% if pagination.per_page == 20 %}selected{% endif %}>20</option>
+        <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+      </select>
+    </div>
+    <div class="col-md-9 d-flex align-items-end justify-content-end">
+      <button class="btn btn-primary">{{ t('admin_customers.search') }}</button>
+    </div>
+  </form>
+</div>
+
+<form method="post" action="{{ url_for('admin.customer_delete', lang=lang) }}" id="customer-delete-form">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+      {% if perms.can('admin','edit') %}
+        <button class="btn btn-outline-danger btn-sm" type="submit" id="delete-selected" disabled>
+          {{ t('admin_customers.delete_selected') }}
+        </button>
+      {% endif %}
+      <span class="ac-text-meta">{{ t('admin_customers.total') }}: {{ pagination.total }}</span>
+    </div>
+  </div>
   <div class="table-responsive">
-    <table class="table table-hover align-middle">
+    <table class="table table-sm align-middle">
       <thead>
         <tr>
+          <th class="text-center" style="width:32px;">
+            <input class="form-check-input" type="checkbox" id="select-all">
+          </th>
           <th>{{ t('admin_customers.customer_no') }}</th>
           <th>{{ t('admin_customers.display_name') }}</th>
+          <th class="d-none d-md-table-cell">{{ t('admin_customers.email') }}</th>
+          <th class="d-none d-md-table-cell">{{ t('admin_customers.phone') }}</th>
           <th>{{ t('admin_customers.customer_type') }}</th>
           <th>{{ t('admin_customers.status') }}</th>
-          <th>{{ t('admin_customers.last_login_at') }}</th>
-          <th>{{ t('admin_customers.created_at') }}</th>
+          <th class="d-none d-lg-table-cell">{{ t('admin_customers.last_login_at') }}</th>
+          <th class="d-none d-lg-table-cell">{{ t('admin_customers.created_at') }}</th>
         </tr>
       </thead>
       <tbody>
         {% for customer in customers %}
           <tr>
-            <td>{{ customer.customer_no }}</td>
-            <td>{{ customer.display_name or customer.full_name or '-' }}</td>
-            <td>{{ customer.customer_type }}</td>
-            <td>{{ customer.status }}</td>
-            <td>{{ customer.last_login_at or '-' }}</td>
-            <td>{{ customer.created_at }}</td>
+            <td class="text-center">
+              <input class="form-check-input row-select" type="checkbox" name="customer_ids" value="{{ customer.id }}">
+            </td>
+            <td class="ac-text-body">{{ customer.customer_no }}</td>
+            <td class="ac-text-body">{{ customer.display_name or customer.full_name or '-' }}</td>
+            <td class="ac-text-body d-none d-md-table-cell">{{ customer.email or '-' }}</td>
+            <td class="ac-text-body d-none d-md-table-cell">{{ customer.phone or '-' }}</td>
+            <td class="ac-text-body">{{ customer.customer_type }}</td>
+            <td>
+              <span class="ac-badge-status badge text-bg-secondary">{{ customer.status }}</span>
+            </td>
+            <td class="ac-text-body d-none d-lg-table-cell">{{ customer.last_login_at or '-' }}</td>
+            <td class="ac-text-body d-none d-lg-table-cell">{{ customer.created_at }}</td>
           </tr>
         {% else %}
           <tr>
-            <td colspan="6" class="text-muted text-center">{{ t('admin_customers.empty') }}</td>
+            <td colspan="9" class="text-muted text-center">{{ t('admin_customers.empty') }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-</div>
+</form>
+
+<nav class="d-flex justify-content-between align-items-center">
+  <span class="ac-text-meta">
+    {{ t('admin_customers.page_label') }} {{ pagination.page }} / {{ pagination.total_pages }}
+  </span>
+  <ul class="pagination mb-0">
+    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+      <a class="page-link"
+         href="{{ url_for('admin.customer_list', lang=lang, page=pagination.page-1, per_page=pagination.per_page) }}">
+        {{ t('admin_customers.prev') }}
+      </a>
+    </li>
+    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+      <a class="page-link"
+         href="{{ url_for('admin.customer_list', lang=lang, page=pagination.page+1, per_page=pagination.per_page) }}">
+        {{ t('admin_customers.next') }}
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<script>
+  const selectAll = document.getElementById('select-all');
+  const deleteButton = document.getElementById('delete-selected');
+  const rows = Array.from(document.querySelectorAll('.row-select'));
+  const deleteForm = document.getElementById('customer-delete-form');
+
+  function updateDeleteState() {
+    const anyChecked = rows.some((checkbox) => checkbox.checked);
+    if (deleteButton) {
+      deleteButton.disabled = !anyChecked;
+    }
+    if (selectAll) {
+      const allChecked = rows.length > 0 && rows.every((checkbox) => checkbox.checked);
+      selectAll.checked = allChecked;
+      selectAll.indeterminate = !allChecked && anyChecked;
+    }
+  }
+
+  selectAll?.addEventListener('change', () => {
+    rows.forEach((checkbox) => {
+      checkbox.checked = selectAll.checked;
+    });
+    updateDeleteState();
+  });
+
+  rows.forEach((checkbox) => checkbox.addEventListener('change', updateDeleteState));
+
+  deleteForm?.addEventListener('submit', (event) => {
+    if (!confirm("{{ t('admin_customers.delete_confirm') }}")) {
+      event.preventDefault();
+    }
+  });
+</script>
 {% endblock %}

@@ -1,17 +1,19 @@
 # app/blueprints/portal/routes.py
 import os
+import re
 
-from flask import render_template, abort, send_from_directory, redirect, url_for, request
+from flask import render_template, abort, send_from_directory, redirect, url_for, request, session
 
 from . import bp
 from ...repositories.vehicle_repo import list_vehicles, get_vehicle_i18n, get_status
 from ...repositories.vehicle_media_repo import list_vehicle_media
-from ...repositories.customer_repo import get_customer_by_identity
+from ...repositories.customer_repo import get_customer_by_identity, update_customer_last_login
 from ...security.customers import get_current_customer, login_customer
 
 PHOTO_FILE_TYPE = "photo"
 PHOTO_DIR_CATEGORY = "vehicle_photo"
 LEGACY_PHOTO_DIR_CATEGORY = "Vehicle_photo"
+DEFAULT_CUSTOMER_CODE = "123321"
 
 
 
@@ -46,6 +48,22 @@ def _media_items(rows: list[dict]) -> list[dict]:
             }
         )
     return items
+
+
+def _detect_identity(identifier: str) -> tuple[str | None, str | None]:
+    if not identifier:
+        return None, None
+    if re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", identifier):
+        return "email", identifier
+    if re.match(r"^[0-9+\-]{6,20}$", identifier):
+        return "phone", identifier
+    return None, None
+
+
+def _issue_customer_code(identifier: str):
+    session["customer_login_identifier"] = identifier
+    session["customer_login_code"] = DEFAULT_CUSTOMER_CODE
+    return DEFAULT_CUSTOMER_CODE
 
 
 def _build_public_vehicle_card(vehicle_row: dict) -> dict:
@@ -126,6 +144,10 @@ def portal_price_apply():
 
 @bp.get("/portal/customer-login")
 def portal_customer_login():
+    customer = get_current_customer()
+    if customer.is_authenticated:
+        target = request.args.get("next") or "portal.portal_home"
+        return redirect(url_for(target, lang=request.args.get("lang")))
     return render_template(
         "portal/customer_login.html",
         active_menu="portal",
@@ -136,7 +158,11 @@ def portal_customer_login():
 @bp.post("/portal/customer-login")
 def portal_customer_login_post():
     identifier = request.form.get("identifier", "").strip()
+    code = request.form.get("code", "").strip()
+    action = request.form.get("action") or "login"
     next_endpoint = request.form.get("next") or "portal.portal_home"
+
+    identity_type, normalized = _detect_identity(identifier)
     if not identifier:
         return render_template(
             "portal/customer_login.html",
@@ -144,15 +170,57 @@ def portal_customer_login_post():
             next_endpoint=next_endpoint,
             error="missing",
         )
-    customer = get_customer_by_identity("email", identifier)
+    if not identity_type:
+        return render_template(
+            "portal/customer_login.html",
+            active_menu="portal",
+            next_endpoint=next_endpoint,
+            error="format",
+        )
+    if action == "send_code":
+        customer = get_customer_by_identity(identity_type, normalized)
+        if not customer or customer.get("status") != "active":
+            return render_template(
+                "portal/customer_login.html",
+                active_menu="portal",
+                next_endpoint=next_endpoint,
+                identifier=identifier,
+                error="invalid",
+            )
+        code_value = _issue_customer_code(normalized)
+        return render_template(
+            "portal/customer_login.html",
+            active_menu="portal",
+            next_endpoint=next_endpoint,
+            identifier=identifier,
+            code_sent=True,
+            code_value=code_value,
+        )
+
+    expected_code = session.get("customer_login_code")
+    expected_identifier = session.get("customer_login_identifier")
+    if not code or code != expected_code or normalized != expected_identifier:
+        return render_template(
+            "portal/customer_login.html",
+            active_menu="portal",
+            next_endpoint=next_endpoint,
+            identifier=identifier,
+            error="code",
+        )
+
+    customer = get_customer_by_identity(identity_type, normalized)
     if not customer or customer.get("status") != "active":
         return render_template(
             "portal/customer_login.html",
             active_menu="portal",
             next_endpoint=next_endpoint,
+            identifier=identifier,
             error="invalid",
         )
     login_customer(customer["id"])
+    update_customer_last_login(customer["id"])
+    session.pop("customer_login_code", None)
+    session.pop("customer_login_identifier", None)
     return redirect(url_for(next_endpoint, lang=request.args.get("lang")))
 
 
