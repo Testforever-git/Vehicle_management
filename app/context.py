@@ -4,6 +4,7 @@ from .i18n import Translator
 from .security.permissions import PermissionService
 from .security.field_permissions import FieldPermissionService
 from .security.users import get_current_user
+from .security.customers import get_current_customer
 
 _translator = Translator()
 
@@ -14,6 +15,7 @@ def register_context(app):
         # 初始化默认值
         lang = current_app.config.get("APP_DEFAULT_LANG", "jp")
         current_user = None
+        current_customer = None
         perms = None
         field_perm = None
         
@@ -22,6 +24,7 @@ def register_context(app):
             session["lang"] = lang
 
             current_user = get_current_user()
+            current_customer = get_current_customer()
             perms = PermissionService(current_user=current_user)
             field_perm = FieldPermissionService(current_user=current_user)
         except Exception as e:
@@ -40,6 +43,11 @@ def register_context(app):
                 "U",
                 (),
                 {"is_authenticated": False, "username": "guest", "role_code": "public", "full_name": "", "role_id": None},
+            )()
+            current_customer = type(
+                "C",
+                (),
+                {"is_authenticated": False, "display_name": "guest", "customer_id": None, "customer_no": ""},
             )()
             perms = _Dummy()
             field_perm = _Dummy()
@@ -79,6 +87,7 @@ def register_context(app):
             "perms": perms,
             "field_perm": field_perm,
             "current_user": current_user,
+            "current_customer": current_customer,
             "lang_url_jp": lang_url_jp,
             "lang_url_cn": lang_url_cn,
         }
