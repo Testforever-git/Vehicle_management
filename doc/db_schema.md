@@ -333,28 +333,19 @@ WHERE table_schema = DATABASE()
   AND table_name IN ('vehicle', 'vehicle_status', 'vehicle_qr', 'user', 'role');
 
 
-## 8. RBAC Tables
 - user: username/password_hash/role_id/is_active/is_deleted/expiored_time…
 - role: role_code + bilingual name
 - role_permission: (role_id, module_name, permission_type, allow_flag)
 - 删除用户时，永远不在数据库中删除用户记录，而是把is_deleted置为1
 
-## 9. Change Rules
-- 不得把动态字段写入 vehicle（里程/油量/位置等）
+
 - 任何新字段新增：优先 ext_json；高频稳定后再“升格”为列
-- 所有跨模块状态更新必须写 vehicle_log
+- 所有跨模块状态更新必须写 audit_log
 
 
-## 10.security
-- 数据库服务器地址,端口,用户名,密码,读取 Vehicle_management\env.ini
-  host
-  port
-  name
-  user
-  password
-  charset
 
-## 11.customer
+
+## 11.customer 客户管理
 - 用户管理表
 customer（客户主档）
 用途：客户“是谁”，以及少量展示字段。不存验证码、不存积分流水、不存复杂权益。
@@ -571,13 +562,137 @@ CREATE TABLE communication_log (
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-- 业务规则（写进开发指引的“必须遵守”）
+- 业务规则
 identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_identity 保证）。
 验证码有效期：5–10 分钟；用过必须写 used_at；验证失败次数/频率限制由应用层实现。
 积分以流水为准：customer_membership.points_balance 允许做快照，但必须能从 customer_points_ledger 复算。
 通知必须记录 log：验证码/重要通知必须写 communication_log，否则排障困难。
 软删除：客户删号/合规删除优先 status='deleted'，历史订单/工单引用不应断。
 
+
+## 12 租赁系统
+- 订单主表 由客户发起。暂不实现。
+- 客户证件表（按订单绑定）。支持驾照 + 身份证件/在留卡/护照，多份文件，且带审核状态。暂不实现。
+- 订单短时锁，防止多人同时提交同车同日期。暂不实现。
+- 运营屏蔽区间，用来表达“仅某几天不可租”（维修、内部用车、调车）。暂不实现。
+- 交接记录。 取车还车。暂不实现。
+
+
+- 定价表
+  CREATE TABLE rental_vehicle_pricing (
+  vehicle_id INT NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'JPY',
+
+  daily_price INT NOT NULL,         -- 基础日价
+  deposit_amount INT NOT NULL DEFAULT 0,
+  insurance_per_day INT NOT NULL DEFAULT 0,
+
+  free_km_per_day INT DEFAULT NULL,
+  extra_km_price INT DEFAULT NULL,
+
+  cleaning_fee INT NOT NULL DEFAULT 0,
+  late_fee_per_day INT NOT NULL DEFAULT 0,  -- 按天（你按天最小单位）
+
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by INT DEFAULT NULL,
+
+  PRIMARY KEY (vehicle_id),
+  CONSTRAINT fk_pricing_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
+  CONSTRAINT fk_pricing_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
+- 折扣表
+  CREATE TABLE rental_longterm_discount_rule (
+  id INT NOT NULL AUTO_INCREMENT,
+  vehicle_id INT NOT NULL,                       -- 先按车，未来你也可改成 group_id
+  min_days INT NOT NULL,
+  max_days INT DEFAULT NULL,                     -- NULL 表示无上限
+
+  discount_type ENUM('percent','amount') NOT NULL,
+  discount_value INT NOT NULL,                   -- percent 用 90 表示 90%（即9折）；amount 用日元
+
+  priority INT NOT NULL DEFAULT 100,             -- 多规则命中时取 priority 最小
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+
+  valid_from DATE DEFAULT NULL,
+  valid_to   DATE DEFAULT NULL,
+
+  PRIMARY KEY (id),
+  KEY idx_discount_vehicle_days (vehicle_id, min_days, max_days, is_active),
+  CONSTRAINT fk_discount_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+按“租期天数区间”命中折扣规则，并支持两种折扣方式：
+如： percent：9折、8折
+     amount：每天减 1000 日元
+长租优惠计算sample:
+base_rent = daily_price * rental_days
+查找命中规则：满足 min_days <= rental_days 且 (max_days IS NULL OR rental_days <= max_days) 且 active 且日期有效
+取 priority 最小的一条
+计算折扣：
+percent：discounted_rent = base_rent * discount_value / 100
+amount：discounted_rent = base_rent - (discount_value * rental_days)
+rent_final = max(discounted_rent, 0)
+
+
+- 额外服务定价表. 儿童座椅/雪胎/送车上门等等
+  CREATE TABLE rental_service_catalog (
+  id INT NOT NULL AUTO_INCREMENT,
+  code VARCHAR(32) NOT NULL,
+  name_jp VARCHAR(64) NOT NULL,
+  name_cn VARCHAR(64) NOT NULL,
+  pricing_type ENUM('per_booking','per_day','per_hour','per_unit') NOT NULL,
+  price INT NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'JPY',
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_service_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- 订单选择了哪些服务的关联表 暂不实现
+  CREATE TABLE rental_booking_service (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  booking_id BIGINT UNSIGNED NOT NULL,
+  service_id INT NOT NULL,
+  qty INT NOT NULL DEFAULT 1,
+  price_snapshot JSON NOT NULL,  -- 本单该服务的计价结果（例如 per_day * 天数）
+  PRIMARY KEY (id),
+  KEY idx_booking_service_booking (booking_id),
+  CONSTRAINT fk_booking_service_booking FOREIGN KEY (booking_id) REFERENCES rental_booking(id) ON DELETE CASCADE,
+  CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+推荐状态流：
+
+客户创建订单 → pending_review
+客户上传证件 → 后台审核证件
+证件不全：awaiting_docs
+审核通过 → awaiting_payment（生成 hold）
+支付成功 → confirmed（库存占用生效）
+取车交接 → picked_up（同时写 rental_handover(pickup)，更新 vehicle_status 读数）
+还车交接 → returned（写 rental_handover(return)）
+结算（生成/追加 charges，退款/补扣完成）→ closed
+
+取消：
+支付前：cancelled（释放 hold）
+支付后：cancelled + 退款（支付系统阶段实现）
+
+## 13.汽车修理/保养系统
+留白
+
+
+## 99.security
+- 数据库服务器地址,端口,用户名,密码,读取 Vehicle_management\env.ini
+  host
+  port
+  name
+  user
+  password
+  charset
 
 ## 100.其他相关表格。
 - brand字典
