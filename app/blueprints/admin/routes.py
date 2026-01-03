@@ -11,6 +11,7 @@ from ...repositories.field_permission_repo import (
 )
 from ...repositories.role_repo import list_roles
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
+from ...repositories.customer_repo import list_customers, count_customers, soft_delete_customers
 from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...repositories.audit_log_repo import create_audit_log, count_audit_logs, list_audit_logs
 from ...repositories.audit_setting_repo import (
@@ -103,6 +104,43 @@ def user_list():
     users = list_users()
     roles = list_roles()
     return render_template("admin/users.html", active_menu="admin_users", users=users, roles=roles)
+
+
+@bp.get("/customers")
+def customer_list():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    page = max(int(request.args.get("page", 1)), 1)
+    per_page = int(request.args.get("per_page", 20))
+    if per_page not in (20, 50):
+        per_page = 20
+    customers = list_customers(page=page, per_page=per_page)
+    total = count_customers()
+    total_pages = max((total + per_page - 1) // per_page, 1)
+    pagination = {
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+    }
+    return render_template(
+        "admin/customers.html",
+        active_menu="admin_customers",
+        customers=customers,
+        pagination=pagination,
+    )
+
+
+@bp.post("/customers/delete")
+def customer_delete():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    customer_ids = request.form.getlist("customer_ids")
+    ids = [int(cid) for cid in customer_ids if str(cid).isdigit()]
+    soft_delete_customers(ids)
+    return redirect(url_for("admin.customer_list", lang=request.args.get("lang")))
 
 
 @bp.post("/users")
