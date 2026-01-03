@@ -133,7 +133,7 @@ def list_vehicles(filters=None, page=1, per_page=20):
     if table_name == "v_vehicle_i18n":
         select_fields = f"""
           v.id, v.plate_no, v.vin, v.type_designation_code,
-          v.garage_name, v.garage_address_jp, v.purchase_price,
+          v.garage_name, v.garage_address_jp, v.purchase_price, v.model_year_ad,
           v.brand_cn, v.brand_jp, v.model_cn, v.model_jp, v.color_cn, v.color_jp,
           {status_select},
           {fuel_select}
@@ -141,7 +141,7 @@ def list_vehicles(filters=None, page=1, per_page=20):
     else:
         select_fields = f"""
           v.id, v.plate_no, v.vin, v.type_designation_code,
-          v.garage_name, v.garage_address_jp, v.purchase_price,
+          v.garage_name, v.garage_address_jp, v.purchase_price, v.model_year_ad,
           {status_select},
           {fuel_select}
         """
