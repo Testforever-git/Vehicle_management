@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_rental_pricing.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3 mb-4">
+  <h5 class="mb-3">{{ t('admin_rental_pricing.vehicle_pricing_title') }}</h5>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_rental_pricing.vehicle_label') }}</th>
+          <th>{{ t('admin_rental_pricing.daily_price') }}</th>
+          <th>{{ t('admin_rental_pricing.deposit_amount') }}</th>
+          <th>{{ t('admin_rental_pricing.insurance_per_day') }}</th>
+          <th>{{ t('admin_rental_pricing.free_km_per_day') }}</th>
+          <th>{{ t('admin_rental_pricing.extra_km_price') }}</th>
+          <th>{{ t('admin_rental_pricing.cleaning_fee') }}</th>
+          <th>{{ t('admin_rental_pricing.late_fee_per_day') }}</th>
+          <th>{{ t('admin_rental_pricing.tax_rate') }}</th>
+          <th>{{ t('admin_rental_pricing.currency') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in pricing_rows %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}">
+            <input type="hidden" name="action" value="pricing_update">
+            <input type="hidden" name="vehicle_id" value="{{ row.vehicle_id }}">
+            <td>{{ row.vehicle_id }}</td>
+            <td>
+              <div class="fw-semibold">{{ (row.brand_jp if lang == 'jp' else row.brand_cn) or '-' }} / {{ (row.model_jp if lang == 'jp' else row.model_cn) or '-' }}</div>
+              <div class="text-muted small">VIN {{ row.vin or '-' }} · {{ row.model_year_ad or '-' }}</div>
+            </td>
+            <td><input class="form-control form-control-sm" name="daily_price" value="{{ row.daily_price or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="deposit_amount" value="{{ row.deposit_amount or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="insurance_per_day" value="{{ row.insurance_per_day or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="free_km_per_day" value="{{ row.free_km_per_day or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="extra_km_price" value="{{ row.extra_km_price or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="cleaning_fee" value="{{ row.cleaning_fee or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="late_fee_per_day" value="{{ row.late_fee_per_day or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="tax_rate" value="{{ row.tax_rate or '' }}"></td>
+            <td><input class="form-control form-control-sm" name="currency" value="{{ row.currency or 'JPY' }}"></td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm">
+                {{ t('admin_rental_pricing.update') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="12" class="text-muted">{{ t('admin_rental_pricing.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card p-3">
+  <h5 class="mb-3">{{ t('admin_rental_pricing.service_catalog_title') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}">
+    <input type="hidden" name="action" value="service_create">
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.service_code') }}</label>
+      <input class="form-control" name="code">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.service_name_jp') }}</label>
+      <input class="form-control" name="name_jp">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.service_name_cn') }}</label>
+      <input class="form-control" name="name_cn">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.pricing_type') }}</label>
+      <select class="form-select" name="pricing_type">
+        {% for pricing_type in pricing_types %}
+          <option value="{{ pricing_type }}">{{ t('admin_rental_pricing.pricing_type_' + pricing_type) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_rental_pricing.price') }}</label>
+      <input class="form-control" name="price">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_rental_pricing.currency') }}</label>
+      <input class="form-control" name="currency" value="JPY">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_rental_pricing.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_rental_pricing.active_yes') }}</option>
+        <option value="0">{{ t('admin_rental_pricing.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-12 d-flex justify-content-end">
+      <button class="btn btn-primary">{{ t('admin_rental_pricing.create') }}</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_rental_pricing.service_code') }}</th>
+          <th>{{ t('admin_rental_pricing.service_name_jp') }}</th>
+          <th>{{ t('admin_rental_pricing.service_name_cn') }}</th>
+          <th>{{ t('admin_rental_pricing.pricing_type') }}</th>
+          <th>{{ t('admin_rental_pricing.price') }}</th>
+          <th>{{ t('admin_rental_pricing.currency') }}</th>
+          <th>{{ t('admin_rental_pricing.active') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for service in services %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.rental_pricing', lang=lang) }}">
+            <input type="hidden" name="action" value="service_update">
+            <input type="hidden" name="service_id" value="{{ service.id }}">
+            <td>{{ service.id }}</td>
+            <td><input class="form-control form-control-sm" name="code" value="{{ service.code }}"></td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ service.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ service.name_cn }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="pricing_type">
+                {% for pricing_type in pricing_types %}
+                  <option value="{{ pricing_type }}" {% if service.pricing_type == pricing_type %}selected{% endif %}>
+                    {{ t('admin_rental_pricing.pricing_type_' + pricing_type) }}
+                  </option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input class="form-control form-control-sm" name="price" value="{{ service.price }}"></td>
+            <td><input class="form-control form-control-sm" name="currency" value="{{ service.currency }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if service.is_active %}selected{% endif %}>{{ t('admin_rental_pricing.active_yes') }}</option>
+                <option value="0" {% if not service.is_active %}selected{% endif %}>{{ t('admin_rental_pricing.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm">
+                {{ t('admin_rental_pricing.update') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-muted">{{ t('admin_rental_pricing.empty_services') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
