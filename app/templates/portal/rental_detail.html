@@ -6,21 +6,6 @@
 {% block page_title %}{{ t('portal.rental_detail_title') }}{% endblock %}
 
 {% block content %}
-<ul class="nav nav-pills mb-4">
-  <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('portal.portal_home', lang=lang) }}">{{ t('portal.nav.home') }}</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('portal.portal_repair', lang=lang) }}">{{ t('portal.nav.repair') }}</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link active" href="{{ url_for('portal.portal_rentals', lang=lang) }}">{{ t('portal.nav.rental') }}</a>
-  </li>
-  <li class="nav-item">
-    <a class="nav-link" href="{{ url_for('portal.portal_trade', lang=lang) }}">{{ t('portal.nav.trade') }}</a>
-  </li>
-</ul>
-
 <div class="mb-3">
   <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('portal.portal_rentals', lang=lang) }}">
     {{ t('portal.rental_back') }}

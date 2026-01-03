@@ -47,6 +47,16 @@
         </ul>
 
         <ul class="navbar-nav mb-2 mb-md-0">
+          {% if current_customer and current_customer.is_authenticated %}
+          <li class="nav-item d-flex align-items-center">
+            <span class="nav-link ac-text-meta">{{ t('portal.customer_login_status') }} {{ current_customer.display_name }}</span>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('portal.portal_customer_logout', lang=lang) }}">
+              {{ t('portal.customer_logout') }}
+            </a>
+          </li>
+          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="portalLangDropdown"
                role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -57,11 +67,6 @@
               <li><a class="dropdown-item" href="{{ lang_url_cn }}">{{ t('nav.lang_cn') }}</a></li>
             </ul>
           </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('auth.login', lang=lang) }}">
-              {{ t('portal.nav.management') }}
-            </a>
-          </li>
         </ul>
       </div>
     </div>
@@ -71,6 +76,10 @@
     <h1 class="ac-title-main mb-3">{% block page_title %}{% endblock %}</h1>
     {% block content %}{% endblock %}
   </main>
+
+  <a class="portal-management-float" href="{{ url_for('portal.portal_management', lang=lang) }}">
+    {{ t('portal.nav.management') }}
+  </a>
 
   {% set show_system_name = false %}
   {% include 'components/footer.html' %}
