@@ -1,0 +1,22 @@
+{% extends 'portal/base.html' %}
+
+{% block page_title %}{{ t('portal.customer_login_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-4" style="max-width: 520px;">
+  <p class="text-muted">{{ t('portal.customer_login_hint') }}</p>
+  <form method="post" action="{{ url_for('portal.portal_customer_login', lang=lang, next=next_endpoint) }}">
+    <div class="mb-3">
+      <label class="form-label" for="customer-identifier">{{ t('portal.customer_login_label') }}</label>
+      <input class="form-control" id="customer-identifier" name="identifier" placeholder="name@example.com" required>
+    </div>
+    <input type="hidden" name="next" value="{{ next_endpoint }}">
+    {% if error == 'missing' %}
+      <div class="alert alert-warning">{{ t('portal.customer_login_missing') }}</div>
+    {% elif error == 'invalid' %}
+      <div class="alert alert-danger">{{ t('portal.customer_login_invalid') }}</div>
+    {% endif %}
+    <button class="btn btn-primary" type="submit">{{ t('portal.customer_login_submit') }}</button>
+  </form>
+</div>
+{% endblock %}

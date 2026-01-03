@@ -1,11 +1,13 @@
 # app/blueprints/portal/routes.py
 import os
 
-from flask import render_template, abort, send_from_directory
+from flask import render_template, abort, send_from_directory, redirect, url_for, request
 
 from . import bp
 from ...repositories.vehicle_repo import list_vehicles, get_vehicle_i18n, get_status
 from ...repositories.vehicle_media_repo import list_vehicle_media
+from ...repositories.customer_repo import get_customer_by_identity
+from ...security.customers import get_current_customer, login_customer
 
 PHOTO_FILE_TYPE = "photo"
 PHOTO_DIR_CATEGORY = "vehicle_photo"
@@ -88,6 +90,70 @@ def portal_rentals():
     vehicles, _ = list_vehicles(page=1, per_page=500)
     cards = [_build_public_vehicle_card(row) for row in vehicles]
     return render_template("portal/rentals.html", active_menu="portal", vehicles=cards)
+
+
+@bp.get("/portal/repair/apply")
+def portal_repair_apply():
+    customer = get_current_customer()
+    if not customer.is_authenticated:
+        return redirect(url_for("portal.portal_customer_login", next="portal.portal_repair_apply", lang=request.args.get("lang")))
+    return render_template("portal/repair_apply.html", active_menu="portal")
+
+
+@bp.get("/portal/rentals/apply")
+def portal_rentals_apply():
+    customer = get_current_customer()
+    if not customer.is_authenticated:
+        return redirect(url_for("portal.portal_customer_login", next="portal.portal_rentals_apply", lang=request.args.get("lang")))
+    return render_template("portal/rental_apply.html", active_menu="portal")
+
+
+@bp.get("/portal/trade/apply")
+def portal_trade_apply():
+    customer = get_current_customer()
+    if not customer.is_authenticated:
+        return redirect(url_for("portal.portal_customer_login", next="portal.portal_trade_apply", lang=request.args.get("lang")))
+    return render_template("portal/trade_apply.html", active_menu="portal")
+
+
+@bp.get("/portal/price-apply")
+def portal_price_apply():
+    customer = get_current_customer()
+    if not customer.is_authenticated:
+        return redirect(url_for("portal.portal_customer_login", next="portal.portal_price_apply", lang=request.args.get("lang")))
+    return render_template("portal/price_apply.html", active_menu="portal")
+
+
+@bp.get("/portal/customer-login")
+def portal_customer_login():
+    return render_template(
+        "portal/customer_login.html",
+        active_menu="portal",
+        next_endpoint=request.args.get("next") or "portal.portal_home",
+    )
+
+
+@bp.post("/portal/customer-login")
+def portal_customer_login_post():
+    identifier = request.form.get("identifier", "").strip()
+    next_endpoint = request.form.get("next") or "portal.portal_home"
+    if not identifier:
+        return render_template(
+            "portal/customer_login.html",
+            active_menu="portal",
+            next_endpoint=next_endpoint,
+            error="missing",
+        )
+    customer = get_customer_by_identity("email", identifier)
+    if not customer or customer.get("status") != "active":
+        return render_template(
+            "portal/customer_login.html",
+            active_menu="portal",
+            next_endpoint=next_endpoint,
+            error="invalid",
+        )
+    login_customer(customer["id"])
+    return redirect(url_for(next_endpoint, lang=request.args.get("lang")))
 
 
 @bp.get("/portal/rentals/<int:vehicle_id>")

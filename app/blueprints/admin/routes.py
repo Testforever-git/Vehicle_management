@@ -11,6 +11,7 @@ from ...repositories.field_permission_repo import (
 )
 from ...repositories.role_repo import list_roles
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
+from ...repositories.customer_repo import list_customers
 from ...repositories.vehicle_log_repo import log_vehicle_action
 from ...repositories.audit_log_repo import create_audit_log, count_audit_logs, list_audit_logs
 from ...repositories.audit_setting_repo import (
@@ -103,6 +104,14 @@ def user_list():
     users = list_users()
     roles = list_roles()
     return render_template("admin/users.html", active_menu="admin_users", users=users, roles=roles)
+
+
+@bp.get("/customers")
+def customer_list():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    customers = list_customers()
+    return render_template("admin/customers.html", active_menu="admin_customers", customers=customers)
 
 
 @bp.post("/users")
