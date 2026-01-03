@@ -9,6 +9,7 @@ from ...repositories.vehicle_repo import list_vehicles, get_vehicle_i18n, get_st
 from ...repositories.vehicle_media_repo import list_vehicle_media
 from ...repositories.customer_repo import get_customer_by_identity, update_customer_last_login
 from ...security.customers import get_current_customer, login_customer
+from ...security.users import get_current_user
 
 PHOTO_FILE_TYPE = "photo"
 PHOTO_DIR_CATEGORY = "vehicle_photo"
@@ -91,6 +92,16 @@ def portal_root():
 @bp.get("/portal")
 def portal_home():
     return render_template("portal/home.html", active_menu="portal")
+
+
+@bp.get("/portal/management")
+def portal_management():
+    current_user = get_current_user()
+    lang = request.args.get("lang")
+    if current_user.is_authenticated:
+        return redirect(url_for("ui.dashboard", lang=lang))
+    session["next_url"] = url_for("ui.dashboard", lang=lang)
+    return redirect(url_for("auth.login", lang=lang))
 
 
 @bp.get("/portal/repair")
