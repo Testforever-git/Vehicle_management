@@ -48,13 +48,18 @@
 
         <ul class="navbar-nav mb-2 mb-md-0">
           {% if current_customer and current_customer.is_authenticated %}
-          <li class="nav-item d-flex align-items-center">
-            <span class="nav-link ac-text-meta">{{ t('portal.customer_login_status') }} {{ current_customer.display_name }}</span>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('portal.portal_customer_logout', lang=lang) }}">
-              {{ t('portal.customer_logout') }}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="customerDropdown"
+               role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {{ current_customer.display_name }}
             </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('portal.portal_customer_logout', lang=lang) }}">
+                  {{ t('portal.customer_logout') }}
+                </a>
+              </li>
+            </ul>
           </li>
           {% endif %}
           <li class="nav-item dropdown">
