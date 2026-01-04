@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_rental_requests.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3">
+  <h5 class="mb-3">{{ t('admin_rental_requests.section_title') }}</h5>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_rental_requests.status') }}</th>
+          <th>{{ t('admin_rental_requests.vehicle') }}</th>
+          <th>{{ t('admin_rental_requests.customer') }}</th>
+          <th>{{ t('admin_rental_requests.dates') }}</th>
+          <th>{{ t('admin_rental_requests.pickup') }}</th>
+          <th>{{ t('admin_rental_requests.dropoff') }}</th>
+          <th>{{ t('admin_rental_requests.services') }}</th>
+          <th>{{ t('admin_rental_requests.total') }}</th>
+          <th>{{ t('admin_rental_requests.created_at') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in rental_requests %}
+        <tr>
+          <td>{{ req.id }}</td>
+          <td>
+            {% if req.status == 'pending' %}
+              <span class="badge bg-warning text-dark">{{ t('admin_rental_requests.status_pending') }}</span>
+            {% elif req.status == 'awaiting_payment' %}
+              <span class="badge bg-info">{{ t('admin_rental_requests.status_awaiting_payment') }}</span>
+            {% elif req.status == 'confirmed' %}
+              <span class="badge bg-success">{{ t('admin_rental_requests.status_confirmed') }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ req.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="fw-semibold">{{ (req.brand_jp if lang == 'jp' else req.brand_cn) or '-' }} / {{ (req.model_jp if lang == 'jp' else req.model_cn) or '-' }}</div>
+            <div class="text-muted small">VIN {{ req.vin or '-' }} · {{ req.model_year_ad or '-' }}</div>
+          </td>
+          <td>
+            <div class="fw-semibold">{{ req.display_name or req.full_name or req.customer_no }}</div>
+            <div class="text-muted small">{{ req.customer_no }}</div>
+          </td>
+          <td>{{ req.start_date }} → {{ req.end_date }}</td>
+          <td>
+            <div>{{ req.pickup_label or '-' }}</div>
+          </td>
+          <td>
+            <div>{{ req.dropoff_label or '-' }}</div>
+          </td>
+          <td>
+            {% if req.service_names %}
+              <ul class="mb-0 ps-3">
+                {% for name in req.service_names %}
+                  <li>{{ name }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <span class="text-muted">{{ t('admin_rental_requests.no_services') }}</span>
+            {% endif %}
+          </td>
+          <td>{{ req.estimated_total or '-' }}</td>
+          <td>{{ req.created_at }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="text-muted">{{ t('admin_rental_requests.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
