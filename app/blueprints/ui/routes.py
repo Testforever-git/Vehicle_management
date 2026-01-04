@@ -361,16 +361,11 @@ def _load_master_data():
             }
         )
 
-    store_options = [
-        {"value": row["id"], "label": row["name"], "is_active": True}
-        for row in stores
-    ]
-
     return {
         "brands": brand_options,
         "models": model_options,
         "colors": color_options,
-        "stores": store_options,
+        "stores": [{"value": row["id"], "label": row["name"]} for row in stores],
         "engine_layout": enum_groups.get("engine_layout", []),
         "fuel_type": enum_groups.get("fuel_type", []),
         "drive_type": enum_groups.get("drive_type", []),
