@@ -113,7 +113,7 @@
       {% if not current_customer.is_authenticated %}
         <div class="alert alert-warning">{{ t('portal.rental_login_hint') }}</div>
       {% endif %}
-      <form method="post" action="{{ url_for('portal.portal_rental_request', vehicle_id=vehicle.id, lang=lang) }}">
+      <form method="post" action="{{ url_for('portal.portal_rental_apply', vehicle_id=vehicle.id, lang=lang) }}">
         <div class="row g-3">
           <div class="col-md-6">
             <label class="form-label">{{ t('portal.rental_date_start') }}</label>
