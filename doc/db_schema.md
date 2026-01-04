@@ -591,8 +591,6 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
   `dropoff_postcode` varchar(16) DEFAULT NULL,
   `dropoff_lat` decimal(10,7) DEFAULT NULL,
   `dropoff_lng` decimal(10,7) DEFAULT NULL,
-  `pickup_location` varchar(128) DEFAULT NULL,
-  `return_location` varchar(128) DEFAULT NULL,
   `status` enum('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
   `currency` char(3) NOT NULL DEFAULT 'JPY',
   `price_snapshot` json NOT NULL,
@@ -678,7 +676,6 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
-
 - 折扣表
   CREATE TABLE rental_longterm_discount_rule (
   id INT NOT NULL AUTO_INCREMENT,
@@ -740,34 +737,20 @@ rent_final = max(discounted_rent, 0)
   CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-- 租车需求（业务流程验证）
-  CREATE TABLE rental_request (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  vehicle_id INT NOT NULL,
-  customer_id BIGINT UNSIGNED NOT NULL,
+-  rental_delivery_fee_tier表，为送车/还车服务规定距离和费用。 （距离为  客户指定地方到该车所属的门店的距离)
+  rental_delivery_fee_tier | CREATE TABLE `rental_delivery_fee_tier` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `min_km` decimal(6,2) NOT NULL DEFAULT '0.00',
+  `max_km` decimal(6,2) DEFAULT NULL,
+  `action` enum('fixed_fee','manual_quote','not_supported') NOT NULL,
+  `fee` int DEFAULT NULL COMMENT 'JPY, only for fixed_fee',
+  `note` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `priority` int NOT NULL DEFAULT '100',
+  PRIMARY KEY (`id`),
+  KEY `idx_delivery_tier` (`is_active`,`priority`,`min_km`,`max_km`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-
-  delivery_lat DECIMAL(10,7) DEFAULT NULL,
-  delivery_lng DECIMAL(10,7) DEFAULT NULL,
-  delivery_address VARCHAR(255) DEFAULT NULL,
-
-  service_ids JSON DEFAULT NULL,
-  note TEXT,
-
-  status ENUM('new','reviewed','cancelled') NOT NULL DEFAULT 'new',
-
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (id),
-  KEY idx_rental_request_vehicle (vehicle_id),
-  KEY idx_rental_request_customer (customer_id),
-  KEY idx_rental_request_status (status),
-  CONSTRAINT fk_rental_request_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
-  CONSTRAINT fk_rental_request_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 推荐状态流：
 
