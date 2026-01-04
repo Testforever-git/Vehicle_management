@@ -140,6 +140,21 @@ LEFT JOIN md_enum dt ON dt.enum_type='drive_type' AND dt.enum_code=v.drive_type_
 
 应用层直接 SELECT * FROM v_vehicle_i18n，无需到处写 join。
 
+2.6 store. 门店列表
+store | CREATE TABLE `store` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `address_jp` varchar(255) NOT NULL,
+  `postcode` varchar(16) DEFAULT NULL,
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `phone` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
 
 ## 3. vehicle_status
 ### Purpose
