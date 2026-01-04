@@ -201,11 +201,17 @@ def _create_tables():
         """
         CREATE TABLE IF NOT EXISTS store (
           id INT NOT NULL AUTO_INCREMENT,
-          name VARCHAR(128) NOT NULL,
+          name VARCHAR(64) NOT NULL,
+          address_jp VARCHAR(255) NOT NULL,
+          postcode VARCHAR(16) DEFAULT NULL,
+          lat DECIMAL(10,7) DEFAULT NULL,
+          lng DECIMAL(10,7) DEFAULT NULL,
+          phone VARCHAR(32) DEFAULT NULL,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (id),
-          UNIQUE KEY uq_store_name (name)
+          UNIQUE KEY uk_store_name (name)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
@@ -222,27 +228,27 @@ def _create_tables():
         FROM information_schema.columns
         WHERE table_schema = DATABASE()
           AND table_name = 'vehicle'
-          AND column_name = 'store_id'
+          AND column_name = 'garage_store_id'
         """
     ):
         execute(
             """
             ALTER TABLE vehicle
-            ADD COLUMN store_id INT DEFAULT NULL
+            ADD COLUMN garage_store_id INT DEFAULT NULL
             """
         )
         execute(
             """
             ALTER TABLE vehicle
-            ADD KEY idx_vehicle_store_id (store_id)
+            ADD KEY idx_vehicle_garage_store_id (garage_store_id)
             """
         )
         execute(
             """
             ALTER TABLE vehicle
-            ADD CONSTRAINT fk_vehicle_store
-              FOREIGN KEY (store_id) REFERENCES store(id)
-              ON DELETE SET NULL
+            ADD CONSTRAINT fk_vehicle_garage_store
+              FOREIGN KEY (garage_store_id) REFERENCES store(id)
+              ON DELETE SET NULL ON UPDATE CASCADE
             """
         )
 
@@ -367,7 +373,7 @@ def _create_views():
         LEFT JOIN md_enum dt ON dt.enum_type='drive_type'
           AND dt.enum_code=v.drive_type_code
           AND dt.is_active=1
-        LEFT JOIN store s ON s.id = v.store_id
+        LEFT JOIN store s ON s.id = v.garage_store_id
         """
     )
 
@@ -493,7 +499,7 @@ def _seed_field_permissions():
         ("vehicle", "plate_no", "basic", False, "车牌号"),
         ("vehicle", "vin", "advanced", False, "VIN"),
         ("vehicle", "type_designation_code", "advanced", False, "型式指定番号"),
-        ("vehicle", "store_id", "advanced", True, "所属门店"),
+        ("vehicle", "garage_store_id", "advanced", True, "所属门店"),
         ("vehicle", "purchase_price", "admin", True, "购入价格"),
         ("vehicle", "legal_doc", "advanced", False, "证件目录"),
         ("vehicle", "vehicle_photo", "advanced", False, "车辆照片目录"),

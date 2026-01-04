@@ -68,7 +68,7 @@ vehicle | CREATE TABLE `vehicle` (
   CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
   CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_vehicle_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
 2.1 Master Data（主数据/字典）规则
@@ -97,7 +97,7 @@ UI 显示使用 name_jp/name_cn
 brand_id：FK -> md_brand.id
 model_id：FK -> md_model.id
 color_id：FK -> md_color.id（可为空）
-store_id：FK -> store.id（可为空）
+garage_store_id：FK -> store.id（可为空）
 engine_layout_code：引用 md_enum(enum_type='engine_layout')
 fuel_type_code：引用 md_enum(enum_type='fuel_type')
 drive_type_code：引用 md_enum(enum_type='drive_type')
@@ -855,9 +855,15 @@ rent_final = max(discounted_rent, 0)
 - store（门店/车库）
   store | CREATE TABLE `store` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `name` varchar(128) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `address_jp` varchar(255) NOT NULL,
+  `postcode` varchar(16) DEFAULT NULL,
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `phone` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_store_name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  UNIQUE KEY `uk_store_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci

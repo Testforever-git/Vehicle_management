@@ -129,7 +129,7 @@ VEHICLE_FIELDS = [
     {"name": "ownership_type", "label_key": "vehicle_edit.fields.ownership_type", "type": "text"},
     {"name": "owner_id", "label_key": "vehicle_edit.fields.owner_id", "type": "text"},
     {"name": "driver_id", "label_key": "vehicle_edit.fields.driver_id", "type": "text"},
-    {"name": "store_id", "label_key": "vehicle_edit.fields.store_id", "type": "select", "options_key": "stores"},
+    {"name": "garage_store_id", "label_key": "vehicle_edit.fields.garage_store_id", "type": "select", "options_key": "stores"},
     {"name": "purchase_date", "label_key": "vehicle_edit.fields.purchase_date", "type": "date"},
     {"name": "purchase_price", "label_key": "vehicle_edit.fields.purchase_price", "type": "number"},
     {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
@@ -138,7 +138,7 @@ VEHICLE_FIELDS = [
 NULLABLE_NUMERIC_FIELDS = {
     "owner_id",
     "driver_id",
-    "store_id",
+    "garage_store_id",
     "brand_id",
     "model_id",
     "color_id",

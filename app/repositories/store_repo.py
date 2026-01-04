@@ -6,16 +6,25 @@ def list_stores():
         """
         SELECT id, name
         FROM store
+        WHERE is_active = 1
         ORDER BY id DESC
         """
     )
 
 
-def create_store(name: str):
+def create_store(
+    name: str,
+    address_jp: str,
+    postcode: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    phone: str | None = None,
+    is_active: bool = True,
+):
     execute(
         """
-        INSERT INTO store (name)
-        VALUES (%s)
+        INSERT INTO store (name, address_jp, postcode, lat, lng, phone, is_active)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (name,),
+        (name, address_jp, postcode, lat, lng, phone, int(is_active)),
     )
