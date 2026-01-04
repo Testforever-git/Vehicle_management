@@ -579,6 +579,18 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
   `vehicle_id` int NOT NULL,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
+  `pickup_mode` enum('store','delivery') NOT NULL DEFAULT 'store',
+  `pickup_store_id` int DEFAULT NULL,
+  `pickup_address_jp` varchar(255) DEFAULT NULL,
+  `pickup_postcode` varchar(16) DEFAULT NULL,
+  `pickup_lat` decimal(10,7) DEFAULT NULL,
+  `pickup_lng` decimal(10,7) DEFAULT NULL,
+  `dropoff_mode` enum('store','pickup') NOT NULL DEFAULT 'store',
+  `dropoff_store_id` int DEFAULT NULL,
+  `dropoff_address_jp` varchar(255) DEFAULT NULL,
+  `dropoff_postcode` varchar(16) DEFAULT NULL,
+  `dropoff_lat` decimal(10,7) DEFAULT NULL,
+  `dropoff_lng` decimal(10,7) DEFAULT NULL,
   `pickup_location` varchar(128) DEFAULT NULL,
   `return_location` varchar(128) DEFAULT NULL,
   `status` enum('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
@@ -602,6 +614,7 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
   CONSTRAINT `fk_booking_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_booking_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicle` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  
   rental_booking.price_snapshot sample:
     {
   "pricing_version": "v1",
