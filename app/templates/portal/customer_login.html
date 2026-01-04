@@ -15,6 +15,7 @@
       <input class="form-control" id="customer-code" name="code" placeholder="123321">
     </div>
     <input type="hidden" name="next" value="{{ next_endpoint }}">
+    <input type="hidden" name="next_url" value="{{ next_url or '' }}">
     {% if error == 'missing' %}
       <div class="alert alert-warning">{{ t('portal.customer_login_missing') }}</div>
     {% elif error == 'format' %}

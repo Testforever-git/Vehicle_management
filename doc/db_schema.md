@@ -44,12 +44,7 @@ vehicle | CREATE TABLE `vehicle` (
   `ownership_type` varchar(32) DEFAULT NULL,
   `owner_id` bigint unsigned DEFAULT NULL,
   `driver_id` bigint unsigned DEFAULT NULL,
-  `garage_name` varchar(128) DEFAULT NULL,
-  `garage_address_jp` varchar(255) DEFAULT NULL,
-  `garage_address_cn` varchar(255) DEFAULT NULL,
-  `garage_postcode` varchar(16) DEFAULT NULL,
-  `garage_lat` decimal(10,7) DEFAULT NULL,
-  `garage_lng` decimal(10,7) DEFAULT NULL,
+  `garage_store_id` int DEFAULT NULL COMMENT '车辆所在/管理门店(store.id)',
   `purchase_date` date DEFAULT NULL,
   `purchase_price` bigint unsigned DEFAULT NULL,
   `legal_doc` varchar(255) DEFAULT NULL,
@@ -70,7 +65,8 @@ vehicle | CREATE TABLE `vehicle` (
   CONSTRAINT `fk_vehicle_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`),
   CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
-  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
 2.1 Master Data（主数据/字典）规则
@@ -99,6 +95,7 @@ UI 显示使用 name_jp/name_cn
 brand_id：FK -> md_brand.id
 model_id：FK -> md_model.id
 color_id：FK -> md_color.id（可为空）
+garage_store_id：FK -> store.id（可为空）
 engine_layout_code：引用 md_enum(enum_type='engine_layout')
 fuel_type_code：引用 md_enum(enum_type='fuel_type')
 drive_type_code：引用 md_enum(enum_type='drive_type')
@@ -666,6 +663,35 @@ rent_final = max(discounted_rent, 0)
   CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+- 租车需求（业务流程验证）
+  CREATE TABLE rental_request (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  vehicle_id INT NOT NULL,
+  customer_id BIGINT UNSIGNED NOT NULL,
+
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+
+  delivery_lat DECIMAL(10,7) DEFAULT NULL,
+  delivery_lng DECIMAL(10,7) DEFAULT NULL,
+  delivery_address VARCHAR(255) DEFAULT NULL,
+
+  service_ids JSON DEFAULT NULL,
+  note TEXT,
+
+  status ENUM('new','reviewed','cancelled') NOT NULL DEFAULT 'new',
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY idx_rental_request_vehicle (vehicle_id),
+  KEY idx_rental_request_customer (customer_id),
+  KEY idx_rental_request_status (status),
+  CONSTRAINT fk_rental_request_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
+  CONSTRAINT fk_rental_request_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 推荐状态流：
 
 客户创建订单 → pending_review
@@ -751,3 +777,19 @@ rent_final = max(discounted_rent, 0)
   UNIQUE KEY `uq_enum` (`enum_type`,`enum_code`),
   KEY `idx_enum_type` (`enum_type`,`is_active`,`sort_order`)
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+- store（门店/车库）
+  store | CREATE TABLE `store` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `address_jp` varchar(255) NOT NULL,
+  `postcode` varchar(16) DEFAULT NULL,
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `phone` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
