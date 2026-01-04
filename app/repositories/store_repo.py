@@ -1,25 +1,14 @@
-from app.db.mysql import fetch_all, fetch_one, execute
+from app.db.mysql import fetch_all, execute
 
 
 def list_stores():
     return fetch_all(
         """
-        SELECT id, name, address_jp, lat, lng
+        SELECT id, name
         FROM store
         WHERE is_active = 1
         ORDER BY id DESC
         """
-    )
-
-
-def get_store(store_id: int):
-    return fetch_one(
-        """
-        SELECT id, name, address_jp, postcode, lat, lng, phone, is_active
-        FROM store
-        WHERE id = %s
-        """,
-        (store_id,),
     )
 
 

@@ -14,10 +14,9 @@
           <th>{{ t('admin_rental_requests.vehicle') }}</th>
           <th>{{ t('admin_rental_requests.customer') }}</th>
           <th>{{ t('admin_rental_requests.dates') }}</th>
-          <th>{{ t('admin_rental_requests.pickup') }}</th>
-          <th>{{ t('admin_rental_requests.dropoff') }}</th>
+          <th>{{ t('admin_rental_requests.location') }}</th>
           <th>{{ t('admin_rental_requests.services') }}</th>
-          <th>{{ t('admin_rental_requests.total') }}</th>
+          <th>{{ t('admin_rental_requests.note') }}</th>
           <th>{{ t('admin_rental_requests.created_at') }}</th>
         </tr>
       </thead>
@@ -26,24 +25,10 @@
         <tr>
           <td>{{ req.id }}</td>
           <td>
-            {% if req.status == 'pending_review' %}
-              <span class="badge bg-warning text-dark">{{ t('admin_rental_requests.status_pending_review') }}</span>
-            {% elif req.status == 'awaiting_docs' %}
-              <span class="badge bg-warning text-dark">{{ t('admin_rental_requests.status_awaiting_docs') }}</span>
-            {% elif req.status == 'awaiting_payment' %}
-              <span class="badge bg-info">{{ t('admin_rental_requests.status_awaiting_payment') }}</span>
-            {% elif req.status == 'confirmed' %}
-              <span class="badge bg-success">{{ t('admin_rental_requests.status_confirmed') }}</span>
-            {% elif req.status == 'picked_up' %}
-              <span class="badge bg-primary">{{ t('admin_rental_requests.status_picked_up') }}</span>
-            {% elif req.status == 'returned' %}
-              <span class="badge bg-secondary">{{ t('admin_rental_requests.status_returned') }}</span>
-            {% elif req.status == 'closed' %}
-              <span class="badge bg-dark">{{ t('admin_rental_requests.status_closed') }}</span>
-            {% elif req.status == 'cancelled' %}
-              <span class="badge bg-secondary">{{ t('admin_rental_requests.status_cancelled') }}</span>
-            {% elif req.status == 'no_show' %}
-              <span class="badge bg-secondary">{{ t('admin_rental_requests.status_no_show') }}</span>
+            {% if req.status == 'new' %}
+              <span class="badge bg-warning text-dark">{{ t('admin_rental_requests.status_new') }}</span>
+            {% elif req.status == 'reviewed' %}
+              <span class="badge bg-success">{{ t('admin_rental_requests.status_reviewed') }}</span>
             {% else %}
               <span class="badge bg-secondary">{{ req.status }}</span>
             {% endif %}
@@ -58,10 +43,12 @@
           </td>
           <td>{{ req.start_date }} → {{ req.end_date }}</td>
           <td>
-            <div>{{ req.pickup_label or '-' }}</div>
-          </td>
-          <td>
-            <div>{{ req.dropoff_label or '-' }}</div>
+            {% if req.delivery_address %}
+              <div>{{ req.delivery_address }}</div>
+            {% endif %}
+            <div class="text-muted small">
+              {{ req.delivery_lat or '-' }}, {{ req.delivery_lng or '-' }}
+            </div>
           </td>
           <td>
             {% if req.service_names %}
@@ -74,12 +61,12 @@
               <span class="text-muted">{{ t('admin_rental_requests.no_services') }}</span>
             {% endif %}
           </td>
-          <td>{{ req.estimated_total or '-' }}</td>
+          <td>{{ req.note or '-' }}</td>
           <td>{{ req.created_at }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="10" class="text-muted">{{ t('admin_rental_requests.empty') }}</td>
+          <td colspan="9" class="text-muted">{{ t('admin_rental_requests.empty') }}</td>
         </tr>
         {% endfor %}
       </tbody>
