@@ -44,12 +44,7 @@ vehicle | CREATE TABLE `vehicle` (
   `ownership_type` varchar(32) DEFAULT NULL,
   `owner_id` bigint unsigned DEFAULT NULL,
   `driver_id` bigint unsigned DEFAULT NULL,
-  `garage_name` varchar(128) DEFAULT NULL,
-  `garage_address_jp` varchar(255) DEFAULT NULL,
-  `garage_address_cn` varchar(255) DEFAULT NULL,
-  `garage_postcode` varchar(16) DEFAULT NULL,
-  `garage_lat` decimal(10,7) DEFAULT NULL,
-  `garage_lng` decimal(10,7) DEFAULT NULL,
+  `garage_store_id` int DEFAULT NULL COMMENT '车辆所在/管理门店(store.id)',
   `purchase_date` date DEFAULT NULL,
   `purchase_price` bigint unsigned DEFAULT NULL,
   `legal_doc` varchar(255) DEFAULT NULL,
@@ -67,8 +62,10 @@ vehicle | CREATE TABLE `vehicle` (
   KEY `idx_vehicle_brand_id` (`brand_id`),
   KEY `idx_vehicle_model_id` (`model_id`),
   KEY `idx_vehicle_color_id` (`color_id`),
+  KEY `idx_vehicle_garage_store_id` (`garage_store_id`),
   CONSTRAINT `fk_vehicle_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`),
   CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
+  CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
   CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
@@ -737,7 +734,7 @@ rent_final = max(discounted_rent, 0)
   CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--  rental_delivery_fee_tier表，为送车/还车服务规定距离和费用。 （距离为  客户指定地方到该车所属的门店的距离)
+-  rental_delivery_fee_tier表，为送车/还车服务规定距离和费用。 （距离为客户指定地方到该车所属的门店的距离)
   rental_delivery_fee_tier | CREATE TABLE `rental_delivery_fee_tier` (
   `id` int NOT NULL AUTO_INCREMENT,
   `min_km` decimal(6,2) NOT NULL DEFAULT '0.00',
