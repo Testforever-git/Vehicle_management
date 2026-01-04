@@ -315,13 +315,15 @@ def _create_tables():
         """
         CREATE TABLE IF NOT EXISTS rental_delivery_fee_tier (
           id INT NOT NULL AUTO_INCREMENT,
-          min_km DECIMAL(8,2) NOT NULL,
-          max_km DECIMAL(8,2) DEFAULT NULL,
-          fee_amount INT NOT NULL,
-          currency CHAR(3) NOT NULL DEFAULT 'JPY',
+          min_km DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+          max_km DECIMAL(6,2) DEFAULT NULL,
+          action ENUM('fixed_fee','manual_quote','not_supported') NOT NULL,
+          fee INT DEFAULT NULL COMMENT 'JPY, only for fixed_fee',
+          note VARCHAR(255) DEFAULT NULL,
           is_active TINYINT(1) NOT NULL DEFAULT 1,
+          priority INT NOT NULL DEFAULT 100,
           PRIMARY KEY (id),
-          KEY idx_delivery_fee_km (min_km, max_km, is_active)
+          KEY idx_delivery_tier (is_active, priority, min_km, max_km)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )
@@ -330,35 +332,43 @@ def _create_tables():
         """
         CREATE TABLE IF NOT EXISTS rental_booking (
           id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          booking_code VARCHAR(32) NOT NULL,
+          customer_id BIGINT UNSIGNED DEFAULT NULL,
           vehicle_id INT NOT NULL,
-          customer_id BIGINT UNSIGNED NOT NULL,
           start_date DATE NOT NULL,
           end_date DATE NOT NULL,
-          pickup_method ENUM('store','address') NOT NULL,
+          pickup_mode ENUM('store','delivery') NOT NULL DEFAULT 'store',
           pickup_store_id INT DEFAULT NULL,
-          pickup_address VARCHAR(255) DEFAULT NULL,
+          pickup_address_jp VARCHAR(255) DEFAULT NULL,
+          pickup_postcode VARCHAR(16) DEFAULT NULL,
           pickup_lat DECIMAL(10,7) DEFAULT NULL,
           pickup_lng DECIMAL(10,7) DEFAULT NULL,
-          dropoff_method ENUM('store','address') NOT NULL,
+          dropoff_mode ENUM('store','pickup') NOT NULL DEFAULT 'store',
           dropoff_store_id INT DEFAULT NULL,
-          dropoff_address VARCHAR(255) DEFAULT NULL,
+          dropoff_address_jp VARCHAR(255) DEFAULT NULL,
+          dropoff_postcode VARCHAR(16) DEFAULT NULL,
           dropoff_lat DECIMAL(10,7) DEFAULT NULL,
           dropoff_lng DECIMAL(10,7) DEFAULT NULL,
+          status ENUM('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
+          currency CHAR(3) NOT NULL DEFAULT 'JPY',
           price_snapshot JSON NOT NULL,
-          access_token VARCHAR(64) NOT NULL,
-          status ENUM('pending','awaiting_payment','confirmed','cancelled') NOT NULL DEFAULT 'pending',
+          payment_status ENUM('unpaid','authorized','paid','partially_refunded','refunded','failed') NOT NULL DEFAULT 'unpaid',
+          deposit_status ENUM('none','authorized','captured','released') NOT NULL DEFAULT 'none',
+          note TEXT,
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          updated_by INT DEFAULT NULL,
+          access_token VARCHAR(64) NOT NULL,
+          access_token_expires_at DATETIME DEFAULT NULL,
           PRIMARY KEY (id),
-          UNIQUE KEY uk_booking_token (access_token),
-          KEY idx_booking_vehicle (vehicle_id),
-          KEY idx_booking_customer (customer_id),
+          UNIQUE KEY uk_rental_booking_code (booking_code),
+          UNIQUE KEY uk_rental_booking_access_token (access_token),
+          KEY idx_booking_vehicle_date (vehicle_id, start_date, end_date),
           KEY idx_booking_status (status),
-          CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
-          CONSTRAINT fk_booking_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE,
-          CONSTRAINT fk_booking_pickup_store FOREIGN KEY (pickup_store_id) REFERENCES store(id) ON DELETE SET NULL,
-          CONSTRAINT fk_booking_dropoff_store FOREIGN KEY (dropoff_store_id) REFERENCES store(id) ON DELETE SET NULL,
-          CONSTRAINT chk_booking_price_snapshot_json CHECK (JSON_VALID(price_snapshot))
+          KEY idx_booking_customer (customer_id),
+          KEY fk_booking_updated_by (updated_by),
+          CONSTRAINT fk_booking_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL,
+          CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE RESTRICT
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )

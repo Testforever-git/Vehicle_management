@@ -13,7 +13,7 @@
         <h6 class="mb-3">{{ t('portal.rental_booking_summary_title') }}</h6>
         <dl class="row mb-0">
           <dt class="col-4">{{ t('portal.rental_booking_id') }}</dt>
-          <dd class="col-8">#{{ booking.id }}</dd>
+          <dd class="col-8">{{ booking.booking_code or booking.id }}</dd>
           <dt class="col-4">{{ t('portal.rental_booking_vehicle') }}</dt>
           <dd class="col-8">
             {% if lang == 'jp' %}

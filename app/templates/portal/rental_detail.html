@@ -355,16 +355,19 @@
 
   const tierFee = (distance) => {
     if (distance === null) {
-      return 0;
+      return { fee: 0, action: null };
     }
     for (const tier of deliveryTiers) {
       const minKm = Number(tier.min_km);
       const maxKm = tier.max_km === null ? null : Number(tier.max_km);
       if (distance >= minKm && (maxKm === null || distance <= maxKm)) {
-        return Number(tier.fee_amount) || 0;
+        if (tier.action === 'fixed_fee') {
+          return { fee: Number(tier.fee) || 0, action: tier.action };
+        }
+        return { fee: 0, action: tier.action };
       }
     }
-    return 0;
+    return { fee: 0, action: null };
   };
 
   const findStore = (storeId) => storeData.find((store) => Number(store.id) === Number(storeId));
@@ -396,16 +399,16 @@
       let dropoffFee = 0;
       if (pickupMethod === 'address') {
         const dist = distanceKm(baseLat, baseLng, toNumber(pickupLatInput?.value), toNumber(pickupLngInput?.value));
-        pickupFee = tierFee(dist);
+        pickupFee = tierFee(dist).fee;
       }
       if (dropoffMethod === 'address') {
         const dist = distanceKm(baseLat, baseLng, toNumber(dropoffLatInput?.value), toNumber(dropoffLngInput?.value));
-        dropoffFee = tierFee(dist);
+        dropoffFee = tierFee(dist).fee;
       } else if (dropoffMethod === 'store') {
         const dropoffStore = findStore(dropoffStoreSelect?.value);
         if (dropoffStore && baseStore && Number(dropoffStore.id) !== Number(baseStore.id)) {
           const dist = distanceKm(baseLat, baseLng, toNumber(dropoffStore.lat), toNumber(dropoffStore.lng));
-          dropoffFee = tierFee(dist) * 0.5;
+          dropoffFee = tierFee(dist).fee * 0.5;
         }
       }
       total += pickupFee + dropoffFee;
