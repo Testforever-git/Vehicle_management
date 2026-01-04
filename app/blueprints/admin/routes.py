@@ -22,7 +22,7 @@ from ...repositories.audit_setting_repo import (
     update_table_audit_flag,
 )
 from ...repositories.rental_pricing_repo import list_rental_pricing, upsert_rental_pricing
-from ...repositories.rental_request_repo import list_rental_requests
+from ...repositories.rental_booking_repo import list_rental_bookings
 from ...repositories.rental_discount_repo import (
     list_rental_discount_rules,
     create_rental_discount_rule,
@@ -923,26 +923,30 @@ def rental_requests():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
     lang = request.args.get("lang") or "jp"
-    requests = list_rental_requests()
+    requests = list_rental_bookings()
     service_rows = list_rental_services(include_inactive=True)
     service_lookup = {
         row["id"]: (row.get("name_jp"), row.get("name_cn")) for row in service_rows
     }
     for row in requests:
-        raw_ids = row.get("service_ids")
         service_names = []
-        if raw_ids:
+        snapshot = row.get("price_snapshot")
+        snapshot_data = {}
+        if snapshot:
             try:
-                ids = json.loads(raw_ids) if isinstance(raw_ids, str) else raw_ids
+                snapshot_data = json.loads(snapshot) if isinstance(snapshot, str) else snapshot
             except (TypeError, ValueError):
-                ids = []
-            if isinstance(ids, list):
-                for service_id in ids:
-                    names = service_lookup.get(service_id)
-                    if not names:
-                        continue
-                    service_names.append(names[0] if lang == "jp" else names[1])
+                snapshot_data = {}
+        for item in snapshot_data.get("service_items", []):
+            service_id = item.get("service_id")
+            names = service_lookup.get(service_id)
+            if not names:
+                continue
+            service_names.append(names[0] if lang == "jp" else names[1])
         row["service_names"] = service_names
+        row["estimated_total"] = snapshot_data.get("estimated_total")
+        row["pickup_label"] = snapshot_data.get("pickup_label")
+        row["dropoff_label"] = snapshot_data.get("dropoff_label")
     return render_template(
         "admin/rental_requests.html",
         active_menu="admin_rental_requests",

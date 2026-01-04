@@ -14,9 +14,10 @@
           <th>{{ t('admin_rental_requests.vehicle') }}</th>
           <th>{{ t('admin_rental_requests.customer') }}</th>
           <th>{{ t('admin_rental_requests.dates') }}</th>
-          <th>{{ t('admin_rental_requests.location') }}</th>
+          <th>{{ t('admin_rental_requests.pickup') }}</th>
+          <th>{{ t('admin_rental_requests.dropoff') }}</th>
           <th>{{ t('admin_rental_requests.services') }}</th>
-          <th>{{ t('admin_rental_requests.note') }}</th>
+          <th>{{ t('admin_rental_requests.total') }}</th>
           <th>{{ t('admin_rental_requests.created_at') }}</th>
         </tr>
       </thead>
@@ -25,10 +26,12 @@
         <tr>
           <td>{{ req.id }}</td>
           <td>
-            {% if req.status == 'new' %}
-              <span class="badge bg-warning text-dark">{{ t('admin_rental_requests.status_new') }}</span>
-            {% elif req.status == 'reviewed' %}
-              <span class="badge bg-success">{{ t('admin_rental_requests.status_reviewed') }}</span>
+            {% if req.status == 'pending' %}
+              <span class="badge bg-warning text-dark">{{ t('admin_rental_requests.status_pending') }}</span>
+            {% elif req.status == 'awaiting_payment' %}
+              <span class="badge bg-info">{{ t('admin_rental_requests.status_awaiting_payment') }}</span>
+            {% elif req.status == 'confirmed' %}
+              <span class="badge bg-success">{{ t('admin_rental_requests.status_confirmed') }}</span>
             {% else %}
               <span class="badge bg-secondary">{{ req.status }}</span>
             {% endif %}
@@ -43,12 +46,10 @@
           </td>
           <td>{{ req.start_date }} → {{ req.end_date }}</td>
           <td>
-            {% if req.delivery_address %}
-              <div>{{ req.delivery_address }}</div>
-            {% endif %}
-            <div class="text-muted small">
-              {{ req.delivery_lat or '-' }}, {{ req.delivery_lng or '-' }}
-            </div>
+            <div>{{ req.pickup_label or '-' }}</div>
+          </td>
+          <td>
+            <div>{{ req.dropoff_label or '-' }}</div>
           </td>
           <td>
             {% if req.service_names %}
@@ -61,12 +62,12 @@
               <span class="text-muted">{{ t('admin_rental_requests.no_services') }}</span>
             {% endif %}
           </td>
-          <td>{{ req.note or '-' }}</td>
+          <td>{{ req.estimated_total or '-' }}</td>
           <td>{{ req.created_at }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="9" class="text-muted">{{ t('admin_rental_requests.empty') }}</td>
+          <td colspan="10" class="text-muted">{{ t('admin_rental_requests.empty') }}</td>
         </tr>
         {% endfor %}
       </tbody>

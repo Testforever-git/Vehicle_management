@@ -313,26 +313,52 @@ def _create_tables():
 
     execute(
         """
-        CREATE TABLE IF NOT EXISTS rental_request (
+        CREATE TABLE IF NOT EXISTS rental_delivery_fee_tier (
+          id INT NOT NULL AUTO_INCREMENT,
+          min_km DECIMAL(8,2) NOT NULL,
+          max_km DECIMAL(8,2) DEFAULT NULL,
+          fee_amount INT NOT NULL,
+          currency CHAR(3) NOT NULL DEFAULT 'JPY',
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          PRIMARY KEY (id),
+          KEY idx_delivery_fee_km (min_km, max_km, is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS rental_booking (
           id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
           vehicle_id INT NOT NULL,
           customer_id BIGINT UNSIGNED NOT NULL,
           start_date DATE NOT NULL,
           end_date DATE NOT NULL,
-          delivery_lat DECIMAL(10,7) DEFAULT NULL,
-          delivery_lng DECIMAL(10,7) DEFAULT NULL,
-          delivery_address VARCHAR(255) DEFAULT NULL,
-          service_ids JSON DEFAULT NULL,
-          note TEXT,
-          status ENUM('new','reviewed','cancelled') NOT NULL DEFAULT 'new',
+          pickup_method ENUM('store','address') NOT NULL,
+          pickup_store_id INT DEFAULT NULL,
+          pickup_address VARCHAR(255) DEFAULT NULL,
+          pickup_lat DECIMAL(10,7) DEFAULT NULL,
+          pickup_lng DECIMAL(10,7) DEFAULT NULL,
+          dropoff_method ENUM('store','address') NOT NULL,
+          dropoff_store_id INT DEFAULT NULL,
+          dropoff_address VARCHAR(255) DEFAULT NULL,
+          dropoff_lat DECIMAL(10,7) DEFAULT NULL,
+          dropoff_lng DECIMAL(10,7) DEFAULT NULL,
+          price_snapshot JSON NOT NULL,
+          access_token VARCHAR(64) NOT NULL,
+          status ENUM('pending','awaiting_payment','confirmed','cancelled') NOT NULL DEFAULT 'pending',
           created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           PRIMARY KEY (id),
-          KEY idx_rental_request_vehicle (vehicle_id),
-          KEY idx_rental_request_customer (customer_id),
-          KEY idx_rental_request_status (status),
-          CONSTRAINT fk_rental_request_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
-          CONSTRAINT fk_rental_request_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE
+          UNIQUE KEY uk_booking_token (access_token),
+          KEY idx_booking_vehicle (vehicle_id),
+          KEY idx_booking_customer (customer_id),
+          KEY idx_booking_status (status),
+          CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
+          CONSTRAINT fk_booking_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE,
+          CONSTRAINT fk_booking_pickup_store FOREIGN KEY (pickup_store_id) REFERENCES store(id) ON DELETE SET NULL,
+          CONSTRAINT fk_booking_dropoff_store FOREIGN KEY (dropoff_store_id) REFERENCES store(id) ON DELETE SET NULL,
+          CONSTRAINT chk_booking_price_snapshot_json CHECK (JSON_VALID(price_snapshot))
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     )

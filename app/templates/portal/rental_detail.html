@@ -107,6 +107,9 @@
       {% if error == 'dates' %}
         <div class="alert alert-warning">{{ t('portal.rental_date_required') }}</div>
       {% endif %}
+      {% if error == 'delivery' %}
+        <div class="alert alert-warning">{{ t('portal.rental_delivery_required') }}</div>
+      {% endif %}
       {% if not current_customer.is_authenticated %}
         <div class="alert alert-warning">{{ t('portal.rental_login_hint') }}</div>
       {% endif %}
@@ -121,12 +124,60 @@
             <input type="date" class="form-control" name="end_date" required>
           </div>
           <div class="col-12">
-            <label class="form-label">{{ t('portal.rental_location_label') }}</label>
-            <div id="rental-map" class="border rounded" style="height: 220px;"></div>
-            <div class="text-muted small mt-2" id="rental-location-hint">{{ t('portal.rental_location_hint') }}</div>
-            <input type="hidden" name="delivery_lat" id="delivery-lat">
-            <input type="hidden" name="delivery_lng" id="delivery-lng">
-            <input type="hidden" name="delivery_address" id="delivery-address">
+            <label class="form-label">{{ t('portal.rental_pickup_title') }}</label>
+            <div class="d-flex flex-wrap gap-3">
+              <label class="form-check-label">
+                <input class="form-check-input me-2" type="radio" name="pickup_method" value="store" checked>
+                {{ t('portal.rental_pickup_store') }}
+              </label>
+              <label class="form-check-label">
+                <input class="form-check-input me-2" type="radio" name="pickup_method" value="address">
+                {{ t('portal.rental_pickup_address') }}
+              </label>
+            </div>
+            <div class="mt-2" data-pickup="store">
+              <select class="form-select" name="pickup_store_id">
+                {% for store in stores %}
+                  <option value="{{ store.id }}" {% if vehicle.garage_store_id == store.id %}selected{% endif %}>
+                    {{ store.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mt-2 d-none" data-pickup="address">
+              <div class="border rounded" id="pickup-map" style="height: 200px;"></div>
+              <div class="text-muted small mt-2" id="pickup-location-hint">{{ t('portal.rental_location_hint') }}</div>
+              <input type="hidden" name="pickup_lat" id="pickup-lat">
+              <input type="hidden" name="pickup_lng" id="pickup-lng">
+              <input type="hidden" name="pickup_address" id="pickup-address">
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_dropoff_title') }}</label>
+            <div class="d-flex flex-wrap gap-3">
+              <label class="form-check-label">
+                <input class="form-check-input me-2" type="radio" name="dropoff_method" value="store" checked>
+                {{ t('portal.rental_dropoff_store') }}
+              </label>
+              <label class="form-check-label">
+                <input class="form-check-input me-2" type="radio" name="dropoff_method" value="address">
+                {{ t('portal.rental_dropoff_address') }}
+              </label>
+            </div>
+            <div class="mt-2" data-dropoff="store">
+              <select class="form-select" name="dropoff_store_id">
+                {% for store in stores %}
+                  <option value="{{ store.id }}">{{ store.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mt-2 d-none" data-dropoff="address">
+              <div class="border rounded" id="dropoff-map" style="height: 200px;"></div>
+              <div class="text-muted small mt-2" id="dropoff-location-hint">{{ t('portal.rental_location_hint') }}</div>
+              <input type="hidden" name="dropoff_lat" id="dropoff-lat">
+              <input type="hidden" name="dropoff_lng" id="dropoff-lng">
+              <input type="hidden" name="dropoff_address" id="dropoff-address">
+            </div>
           </div>
           <div class="col-12">
             <label class="form-label">{{ t('portal.rental_services_label') }}</label>
@@ -177,27 +228,29 @@
     mainImage.src = "{{ url_for('portal.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename='__PLACEHOLDER__') }}".replace('__PLACEHOLDER__', filename);
   });
 
-  const mapContainer = document.getElementById('rental-map');
-  if (mapContainer && window.L) {
+  const setupLocationMap = (mapId, latId, lngId, addressId, hintId) => {
+    const container = document.getElementById(mapId);
+    if (!container || !window.L) {
+      return null;
+    }
     const defaultLatLng = [35.681236, 139.767125];
-    const map = L.map(mapContainer).setView(defaultLatLng, 12);
+    const map = L.map(container).setView(defaultLatLng, 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
     let marker = null;
-    const latInput = document.getElementById('delivery-lat');
-    const lngInput = document.getElementById('delivery-lng');
-    const addressInput = document.getElementById('delivery-address');
-    const hint = document.getElementById('rental-location-hint');
+    const latInput = document.getElementById(latId);
+    const lngInput = document.getElementById(lngId);
+    const addressInput = document.getElementById(addressId);
+    const hint = document.getElementById(hintId);
 
     const setMarker = (lat, lng) => {
       if (marker) {
         map.removeLayer(marker);
       }
       marker = L.marker([lat, lng]).addTo(map);
-      const zoom = map.getZoom();
-      map.setView([lat, lng], zoom);
+      map.setView([lat, lng], map.getZoom());
       if (latInput && lngInput) {
         latInput.value = lat.toFixed(6);
         lngInput.value = lng.toFixed(6);
@@ -208,26 +261,50 @@
       if (hint) {
         hint.textContent = "{{ t('portal.rental_location_selected') }}: " + `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
       }
+      updateTotal();
     };
 
     map.on('click', (event) => {
       setMarker(event.latlng.lat, event.latlng.lng);
     });
 
-    const consentKey = 'rentalLocationConsent';
-    const consented = localStorage.getItem(consentKey) === 'true';
-    if (!consented) {
-      const accepted = window.confirm("{{ t('portal.rental_location_consent') }}");
-      if (accepted) {
-        localStorage.setItem(consentKey, 'true');
-      }
-    }
-    if (localStorage.getItem(consentKey) === 'true' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setMarker(position.coords.latitude, position.coords.longitude);
-      });
+    return { map, setMarker };
+  };
+
+  const pickupMap = setupLocationMap('pickup-map', 'pickup-lat', 'pickup-lng', 'pickup-address', 'pickup-location-hint');
+  const dropoffMap = setupLocationMap('dropoff-map', 'dropoff-lat', 'dropoff-lng', 'dropoff-address', 'dropoff-location-hint');
+
+  const consentKey = 'rentalLocationConsent';
+  const consented = localStorage.getItem(consentKey) === 'true';
+  if (!consented) {
+    const accepted = window.confirm("{{ t('portal.rental_location_consent') }}");
+    if (accepted) {
+      localStorage.setItem(consentKey, 'true');
     }
   }
+  if (localStorage.getItem(consentKey) === 'true' && navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      pickupMap?.setMarker(position.coords.latitude, position.coords.longitude);
+    });
+  }
+
+  const toggleSections = (name, value) => {
+    document.querySelectorAll(`[data-${name}]`).forEach((el) => {
+      el.classList.toggle('d-none', el.dataset[name] !== value);
+    });
+  };
+  document.querySelectorAll('input[name=\"pickup_method\"]').forEach((input) => {
+    input.addEventListener('change', (event) => {
+      toggleSections('pickup', event.target.value);
+      updateTotal();
+    });
+  });
+  document.querySelectorAll('input[name=\"dropoff_method\"]').forEach((input) => {
+    input.addEventListener('change', (event) => {
+      toggleSections('dropoff', event.target.value);
+      updateTotal();
+    });
+  });
 
   const totalEl = document.getElementById('rental-estimated-total');
   const startInput = document.querySelector('input[name=\"start_date\"]');
@@ -236,6 +313,17 @@
   const dailyPrice = Number(document.querySelector('[data-pricing=\"daily\"]')?.textContent?.trim().split(' ')[0]) || 0;
   const insurancePrice = Number(document.querySelector('[data-pricing=\"insurance\"]')?.textContent?.trim().split(' ')[0]) || 0;
   const cleaningFee = Number(document.querySelector('[data-pricing=\"cleaning\"]')?.textContent?.trim().split(' ')[0]) || 0;
+  const storeData = {{ stores | tojson }};
+  const deliveryTiers = {{ delivery_tiers | tojson }};
+  const baseStoreId = {{ vehicle.garage_store_id or 1 }};
+  const pickupMethodInputs = document.querySelectorAll('input[name=\"pickup_method\"]');
+  const dropoffMethodInputs = document.querySelectorAll('input[name=\"dropoff_method\"]');
+  const pickupStoreSelect = document.querySelector('select[name=\"pickup_store_id\"]');
+  const dropoffStoreSelect = document.querySelector('select[name=\"dropoff_store_id\"]');
+  const pickupLatInput = document.getElementById('pickup-lat');
+  const pickupLngInput = document.getElementById('pickup-lng');
+  const dropoffLatInput = document.getElementById('dropoff-lat');
+  const dropoffLngInput = document.getElementById('dropoff-lng');
 
   const calculateDays = () => {
     if (!startInput?.value || !endInput?.value) {
@@ -246,6 +334,40 @@
     const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
     return diff > 0 ? diff : 0;
   };
+
+  const toNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const distanceKm = (lat1, lng1, lat2, lng2) => {
+    if ([lat1, lng1, lat2, lng2].some((v) => v === null)) {
+      return null;
+    }
+    const r = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2;
+    return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const tierFee = (distance) => {
+    if (distance === null) {
+      return 0;
+    }
+    for (const tier of deliveryTiers) {
+      const minKm = Number(tier.min_km);
+      const maxKm = tier.max_km === null ? null : Number(tier.max_km);
+      if (distance >= minKm && (maxKm === null || distance <= maxKm)) {
+        return Number(tier.fee_amount) || 0;
+      }
+    }
+    return 0;
+  };
+
+  const findStore = (storeId) => storeData.find((store) => Number(store.id) === Number(storeId));
 
   const updateTotal = () => {
     const days = calculateDays();
@@ -265,6 +387,28 @@
           total += price;
         }
       });
+      const baseStore = findStore(baseStoreId) || findStore(1);
+      const baseLat = toNumber(baseStore?.lat);
+      const baseLng = toNumber(baseStore?.lng);
+      const pickupMethod = [...pickupMethodInputs].find((input) => input.checked)?.value;
+      const dropoffMethod = [...dropoffMethodInputs].find((input) => input.checked)?.value;
+      let pickupFee = 0;
+      let dropoffFee = 0;
+      if (pickupMethod === 'address') {
+        const dist = distanceKm(baseLat, baseLng, toNumber(pickupLatInput?.value), toNumber(pickupLngInput?.value));
+        pickupFee = tierFee(dist);
+      }
+      if (dropoffMethod === 'address') {
+        const dist = distanceKm(baseLat, baseLng, toNumber(dropoffLatInput?.value), toNumber(dropoffLngInput?.value));
+        dropoffFee = tierFee(dist);
+      } else if (dropoffMethod === 'store') {
+        const dropoffStore = findStore(dropoffStoreSelect?.value);
+        if (dropoffStore && baseStore && Number(dropoffStore.id) !== Number(baseStore.id)) {
+          const dist = distanceKm(baseLat, baseLng, toNumber(dropoffStore.lat), toNumber(dropoffStore.lng));
+          dropoffFee = tierFee(dist) * 0.5;
+        }
+      }
+      total += pickupFee + dropoffFee;
     }
     totalEl.textContent = total ? `${total} {{ t('portal.rental_currency_unit') }}` : '-';
   };
@@ -272,6 +416,8 @@
   startInput?.addEventListener('change', updateTotal);
   endInput?.addEventListener('change', updateTotal);
   serviceInputs.forEach((input) => input.addEventListener('change', updateTotal));
+  pickupStoreSelect?.addEventListener('change', updateTotal);
+  dropoffStoreSelect?.addEventListener('change', updateTotal);
   updateTotal();
 </script>
 {% endblock %}
