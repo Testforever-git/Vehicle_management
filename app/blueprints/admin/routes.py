@@ -1,3 +1,5 @@
+import json
+
 from flask import render_template, redirect, url_for, request, flash
 from . import bp
 from ...repositories.field_permission_repo import (
@@ -18,6 +20,18 @@ from ...repositories.audit_setting_repo import (
     list_audit_catalog,
     update_audit_flags,
     update_table_audit_flag,
+)
+from ...repositories.rental_pricing_repo import list_rental_pricing, upsert_rental_pricing
+from ...repositories.rental_booking_repo import list_rental_bookings
+from ...repositories.rental_discount_repo import (
+    list_rental_discount_rules,
+    create_rental_discount_rule,
+    update_rental_discount_rule,
+)
+from ...repositories.rental_service_repo import (
+    list_rental_services,
+    create_rental_service,
+    update_rental_service,
 )
 from ...repositories.master_data_repo import (
     list_brands,
@@ -95,6 +109,24 @@ def _admin_role_id(roles):
         if role["role_code"] == "admin":
             return role["id"]
     return None
+
+
+def _parse_int(value: str | None, default: int | None = None) -> int | None:
+    if value is None or value == "":
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_float(value: str | None, default: float | None = None) -> float | None:
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 @bp.get("/users")
@@ -738,3 +770,185 @@ def dictionary_actions():
                 deactivate_enum(enum_id)
 
     return redirect(url_for("admin.dictionaries", lang=request.args.get("lang")))
+
+
+@bp.get("/rental/pricing")
+def rental_pricing():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    pricing_rows = list_rental_pricing()
+    services = list_rental_services(include_inactive=True)
+    discount_rules = list_rental_discount_rules()
+    pricing_types = [
+        "per_booking",
+        "per_day",
+        "per_hour",
+        "per_unit",
+    ]
+    discount_types = ["percent", "amount"]
+    return render_template(
+        "admin/rental_pricing.html",
+        active_menu="admin_rental_pricing",
+        pricing_rows=pricing_rows,
+        services=services,
+        pricing_types=pricing_types,
+        discount_rules=discount_rules,
+        discount_types=discount_types,
+    )
+
+
+@bp.post("/rental/pricing")
+def rental_pricing_actions():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    action = request.form.get("action")
+    if action == "pricing_update":
+        vehicle_id = _parse_int(request.form.get("vehicle_id"))
+        if vehicle_id:
+            currency = (request.form.get("currency") or "JPY").strip() or "JPY"
+            daily_price = _parse_int(request.form.get("daily_price"), 0) or 0
+            deposit_amount = _parse_int(request.form.get("deposit_amount"), 0) or 0
+            insurance_per_day = _parse_int(request.form.get("insurance_per_day"), 0) or 0
+            free_km_per_day = _parse_int(request.form.get("free_km_per_day"))
+            extra_km_price = _parse_int(request.form.get("extra_km_price"))
+            cleaning_fee = _parse_int(request.form.get("cleaning_fee"), 0) or 0
+            late_fee_per_day = _parse_int(request.form.get("late_fee_per_day"), 0) or 0
+            tax_rate = _parse_float(request.form.get("tax_rate"), 10.00) or 10.00
+            current_user = get_current_user()
+            upsert_rental_pricing(
+                vehicle_id=vehicle_id,
+                currency=currency,
+                daily_price=daily_price,
+                deposit_amount=deposit_amount,
+                insurance_per_day=insurance_per_day,
+                free_km_per_day=free_km_per_day,
+                extra_km_price=extra_km_price,
+                cleaning_fee=cleaning_fee,
+                late_fee_per_day=late_fee_per_day,
+                tax_rate=tax_rate,
+                updated_by=current_user.user_id,
+            )
+            if request.headers.get("X-Requested-With") == "fetch":
+                return {"ok": True}
+            flash("rental pricing updated", "success")
+    elif action == "service_create":
+        code = (request.form.get("code") or "").strip()
+        name_jp = (request.form.get("name_jp") or "").strip()
+        name_cn = (request.form.get("name_cn") or "").strip()
+        pricing_type = (request.form.get("pricing_type") or "").strip()
+        price = _parse_int(request.form.get("price"), 0) or 0
+        currency = (request.form.get("currency") or "JPY").strip() or "JPY"
+        is_active = request.form.get("is_active") == "1"
+        if code and name_jp and name_cn and pricing_type:
+            create_rental_service(code, name_jp, name_cn, pricing_type, price, currency, is_active)
+            flash("rental service created", "success")
+        else:
+            flash("missing required service fields", "warning")
+    elif action == "service_update":
+        service_id = _parse_int(request.form.get("service_id"))
+        if service_id:
+            code = (request.form.get("code") or "").strip()
+            name_jp = (request.form.get("name_jp") or "").strip()
+            name_cn = (request.form.get("name_cn") or "").strip()
+            pricing_type = (request.form.get("pricing_type") or "").strip()
+            price = _parse_int(request.form.get("price"), 0) or 0
+            currency = (request.form.get("currency") or "JPY").strip() or "JPY"
+            is_active = request.form.get("is_active") == "1"
+            update_rental_service(
+                service_id,
+                code,
+                name_jp,
+                name_cn,
+                pricing_type,
+                price,
+                currency,
+                is_active,
+            )
+            flash("rental service updated", "success")
+    elif action == "discount_create":
+        vehicle_id = _parse_int(request.form.get("vehicle_id"))
+        min_days = _parse_int(request.form.get("min_days"), 1) or 1
+        max_days = _parse_int(request.form.get("max_days"))
+        discount_type = (request.form.get("discount_type") or "").strip()
+        discount_value = _parse_int(request.form.get("discount_value"), 0) or 0
+        priority = _parse_int(request.form.get("priority"), 100) or 100
+        is_active = request.form.get("is_active") == "1"
+        valid_from = request.form.get("valid_from") or None
+        valid_to = request.form.get("valid_to") or None
+        if vehicle_id and discount_type:
+            create_rental_discount_rule(
+                vehicle_id,
+                min_days,
+                max_days,
+                discount_type,
+                discount_value,
+                priority,
+                is_active,
+                valid_from,
+                valid_to,
+            )
+            flash("rental discount created", "success")
+        else:
+            flash("missing required discount fields", "warning")
+    elif action == "discount_update":
+        rule_id = _parse_int(request.form.get("rule_id"))
+        vehicle_id = _parse_int(request.form.get("vehicle_id"))
+        min_days = _parse_int(request.form.get("min_days"), 1) or 1
+        max_days = _parse_int(request.form.get("max_days"))
+        discount_type = (request.form.get("discount_type") or "").strip()
+        discount_value = _parse_int(request.form.get("discount_value"), 0) or 0
+        priority = _parse_int(request.form.get("priority"), 100) or 100
+        is_active = request.form.get("is_active") == "1"
+        valid_from = request.form.get("valid_from") or None
+        valid_to = request.form.get("valid_to") or None
+        if rule_id and vehicle_id and discount_type:
+            update_rental_discount_rule(
+                rule_id,
+                vehicle_id,
+                min_days,
+                max_days,
+                discount_type,
+                discount_value,
+                priority,
+                is_active,
+                valid_from,
+                valid_to,
+            )
+            flash("rental discount updated", "success")
+    return redirect(url_for("admin.rental_pricing", lang=request.args.get("lang")))
+
+
+@bp.get("/rental/requests")
+def rental_requests():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    lang = request.args.get("lang") or "jp"
+    requests = list_rental_bookings()
+    service_rows = list_rental_services(include_inactive=True)
+    service_lookup = {
+        row["id"]: (row.get("name_jp"), row.get("name_cn")) for row in service_rows
+    }
+    for row in requests:
+        service_names = []
+        snapshot = row.get("price_snapshot")
+        snapshot_data = {}
+        if snapshot:
+            try:
+                snapshot_data = json.loads(snapshot) if isinstance(snapshot, str) else snapshot
+            except (TypeError, ValueError):
+                snapshot_data = {}
+        for item in snapshot_data.get("service_items", []):
+            service_id = item.get("service_id")
+            names = service_lookup.get(service_id)
+            if not names:
+                continue
+            service_names.append(names[0] if lang == "jp" else names[1])
+        row["service_names"] = service_names
+        row["estimated_total"] = snapshot_data.get("estimated_total")
+        row["pickup_label"] = snapshot_data.get("pickup_label")
+        row["dropoff_label"] = snapshot_data.get("dropoff_label")
+    return render_template(
+        "admin/rental_requests.html",
+        active_menu="admin_rental_requests",
+        rental_requests=requests,
+    )

@@ -33,7 +33,7 @@
 
         {% if can('admin','view') %}
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','admin_customers','field_permissions','admin_dictionaries','audit_log'] %}active{% endif %}"
+          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','admin_customers','field_permissions','admin_dictionaries','audit_log','admin_rental_pricing','admin_rental_requests'] %}active{% endif %}"
              href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             {{ t('nav.admin') }}
           </a>
@@ -61,6 +61,16 @@
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.dictionaries', lang=lang) }}">
                 {{ t('nav.admin_dictionaries') }}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="{{ url_for('admin.rental_pricing', lang=lang) }}">
+                {{ t('nav.admin_rental_pricing') }}
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="{{ url_for('admin.rental_requests', lang=lang) }}">
+                {{ t('nav.admin_rental_requests') }}
               </a>
             </li>
           </ul>
