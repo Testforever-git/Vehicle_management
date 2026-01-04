@@ -48,6 +48,7 @@
       <h5 class="mb-2">{{ brand_label }} / {{ model_label }}</h5>
       <div class="text-muted">{{ t('portal.rentals_mileage') }}: {{ status.mileage if status.mileage is not none else '-' }} km</div>
       <div class="text-muted">{{ t('portal.rental_year_label') }}: {{ vehicle.model_year_ad or '-' }}</div>
+      <div class="text-muted">{{ t('portal.rental_store_label') }}: {{ vehicle.store_name or '-' }}</div>
     </div>
     <div class="card p-3">
       <h5 class="mb-2">{{ t('portal.rental_description_title') }}</h5>

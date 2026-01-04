@@ -199,6 +199,55 @@ def _create_tables():
 
     execute(
         """
+        CREATE TABLE IF NOT EXISTS store (
+          id INT NOT NULL AUTO_INCREMENT,
+          name VARCHAR(128) NOT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_store_name (name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+    if fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+        """
+    ) and not fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+          AND column_name = 'store_id'
+        """
+    ):
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD COLUMN store_id INT DEFAULT NULL
+            """
+        )
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD KEY idx_vehicle_store_id (store_id)
+            """
+        )
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD CONSTRAINT fk_vehicle_store
+              FOREIGN KEY (store_id) REFERENCES store(id)
+              ON DELETE SET NULL
+            """
+        )
+
+    execute(
+        """
         CREATE TABLE IF NOT EXISTS rental_vehicle_pricing (
           vehicle_id INT NOT NULL,
           currency CHAR(3) NOT NULL DEFAULT 'JPY',
@@ -289,6 +338,7 @@ def _create_views():
         CREATE OR REPLACE VIEW v_vehicle_i18n AS
         SELECT
           v.*,
+          s.name AS store_name,
           b.brand_code,
           b.name_jp AS brand_jp,
           b.name_cn AS brand_cn,
@@ -317,6 +367,7 @@ def _create_views():
         LEFT JOIN md_enum dt ON dt.enum_type='drive_type'
           AND dt.enum_code=v.drive_type_code
           AND dt.is_active=1
+        LEFT JOIN store s ON s.id = v.store_id
         """
     )
 
@@ -442,8 +493,7 @@ def _seed_field_permissions():
         ("vehicle", "plate_no", "basic", False, "车牌号"),
         ("vehicle", "vin", "advanced", False, "VIN"),
         ("vehicle", "type_designation_code", "advanced", False, "型式指定番号"),
-        ("vehicle", "garage_name", "advanced", True, "车库名称"),
-        ("vehicle", "garage_address_jp", "advanced", True, "车库地址"),
+        ("vehicle", "store_id", "advanced", True, "所属门店"),
         ("vehicle", "purchase_price", "admin", True, "购入价格"),
         ("vehicle", "legal_doc", "advanced", False, "证件目录"),
         ("vehicle", "vehicle_photo", "advanced", False, "车辆照片目录"),
