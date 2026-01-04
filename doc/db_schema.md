@@ -666,6 +666,35 @@ rent_final = max(discounted_rent, 0)
   CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+- 租车需求（业务流程验证）
+  CREATE TABLE rental_request (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  vehicle_id INT NOT NULL,
+  customer_id BIGINT UNSIGNED NOT NULL,
+
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+
+  delivery_lat DECIMAL(10,7) DEFAULT NULL,
+  delivery_lng DECIMAL(10,7) DEFAULT NULL,
+  delivery_address VARCHAR(255) DEFAULT NULL,
+
+  service_ids JSON DEFAULT NULL,
+  note TEXT,
+
+  status ENUM('new','reviewed','cancelled') NOT NULL DEFAULT 'new',
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (id),
+  KEY idx_rental_request_vehicle (vehicle_id),
+  KEY idx_rental_request_customer (customer_id),
+  KEY idx_rental_request_status (status),
+  CONSTRAINT fk_rental_request_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
+  CONSTRAINT fk_rental_request_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 推荐状态流：
 
 客户创建订单 → pending_review
