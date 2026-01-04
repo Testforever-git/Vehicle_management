@@ -571,7 +571,68 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
 
 
 ## 12 租赁系统
-- 订单主表 由客户发起。暂不实现。
+- 订单主表 记录客户发起的订单。
+  rental_booking | CREATE TABLE `rental_booking` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `booking_code` varchar(32) NOT NULL,
+  `customer_id` bigint unsigned DEFAULT NULL,
+  `vehicle_id` int NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `pickup_location` varchar(128) DEFAULT NULL,
+  `return_location` varchar(128) DEFAULT NULL,
+  `status` enum('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
+  `currency` char(3) NOT NULL DEFAULT 'JPY',
+  `price_snapshot` json NOT NULL,
+  `payment_status` enum('unpaid','authorized','paid','partially_refunded','refunded','failed') NOT NULL DEFAULT 'unpaid',
+  `deposit_status` enum('none','authorized','captured','released') NOT NULL DEFAULT 'none',
+  `note` text,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updated_by` int DEFAULT NULL,
+  `access_token` varchar(64) NOT NULL,
+  `access_token_expires_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_rental_booking_code` (`booking_code`),
+  UNIQUE KEY `uk_rental_booking_access_token` (`access_token`),
+  KEY `idx_booking_vehicle_date` (`vehicle_id`,`start_date`,`end_date`),
+  KEY `idx_booking_status` (`status`),
+  KEY `idx_booking_customer` (`customer_id`),
+  KEY `fk_booking_updated_by` (`updated_by`),
+  CONSTRAINT `fk_booking_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_booking_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicle` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  rental_booking.price_snapshot sample:
+    {
+  "pricing_version": "v1",
+  "days": 7,
+  "base": {
+    "daily_price": 12000,
+    "base_rent": 84000
+  },
+  "longterm_discount": {
+    "rule_id": 3,
+    "type": "percent",
+    "value": 90,
+    "discounted_rent": 75600
+  },
+  "insurance": {
+    "per_day": 800,
+    "total": 5600
+  },
+  "deposit": 30000,
+  "services": [
+    {"service_id": 1, "name": "チャイルドシート", "pricing": "per_day", "unit_price": 500, "qty": 1, "total": 3500}
+  ],
+  "tax": {
+    "rate": 10.0,
+    "taxable": 79100,
+    "amount": 7910
+  },
+  "total": 87010
+}
+
+  
 - 客户证件表（按订单绑定）。支持驾照 + 身份证件/在留卡/护照，多份文件，且带审核状态。暂不实现。
 - 订单短时锁，防止多人同时提交同车同日期。暂不实现。
 - 运营屏蔽区间，用来表达“仅某几天不可租”（维修、内部用车、调车）。暂不实现。
