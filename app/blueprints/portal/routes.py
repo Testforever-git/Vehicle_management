@@ -501,6 +501,44 @@ def portal_rental_booking(access_token: str):
     )
 
 
+@bp.post("/portal/rentals/<int:vehicle_id>/apply")
+def portal_rental_request(vehicle_id: int):
+    customer = get_current_customer()
+    if not customer.is_authenticated:
+        next_url = url_for("portal.portal_rental_detail", vehicle_id=vehicle_id, lang=request.args.get("lang"))
+        return redirect(url_for("portal.portal_customer_login", next_url=next_url, lang=request.args.get("lang")))
+    start_date = request.form.get("start_date")
+    end_date = request.form.get("end_date")
+    delivery_lat = request.form.get("delivery_lat")
+    delivery_lng = request.form.get("delivery_lng")
+    delivery_address = request.form.get("delivery_address")
+    service_ids = [int(sid) for sid in request.form.getlist("service_ids") if sid.isdigit()]
+    note = request.form.get("note")
+
+    def _to_float(value: str | None):
+        if not value:
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
+    if not start_date or not end_date:
+        return redirect(url_for("portal.portal_rental_detail", vehicle_id=vehicle_id, lang=request.args.get("lang"), error="dates"))
+    create_rental_request(
+        vehicle_id=vehicle_id,
+        customer_id=customer.customer_id,
+        start_date=start_date,
+        end_date=end_date,
+        delivery_lat=_to_float(delivery_lat),
+        delivery_lng=_to_float(delivery_lng),
+        delivery_address=delivery_address,
+        service_ids=service_ids,
+        note=note,
+    )
+    return redirect(url_for("portal.portal_rental_detail", vehicle_id=vehicle_id, lang=request.args.get("lang"), submitted=1))
+
+
 @bp.get("/portal/vehicle/image/<vin>/<category>/<filename>")
 def portal_vehicle_image(vin: str, category: str, filename: str):
     if category not in {"legal_doc", PHOTO_DIR_CATEGORY, LEGACY_PHOTO_DIR_CATEGORY}:

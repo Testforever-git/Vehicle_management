@@ -62,8 +62,10 @@ vehicle | CREATE TABLE `vehicle` (
   KEY `idx_vehicle_brand_id` (`brand_id`),
   KEY `idx_vehicle_model_id` (`model_id`),
   KEY `idx_vehicle_color_id` (`color_id`),
+  KEY `idx_vehicle_garage_store_id` (`garage_store_id`),
   CONSTRAINT `fk_vehicle_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`),
   CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
+  CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
   CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
@@ -140,6 +142,21 @@ LEFT JOIN md_enum dt ON dt.enum_type='drive_type' AND dt.enum_code=v.drive_type_
 
 应用层直接 SELECT * FROM v_vehicle_i18n，无需到处写 join。
 
+2.6 store. 门店列表
+store | CREATE TABLE `store` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `address_jp` varchar(255) NOT NULL,
+  `postcode` varchar(16) DEFAULT NULL,
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `phone` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
 
 ## 3. vehicle_status
 ### Purpose
@@ -568,7 +585,79 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
 
 
 ## 12 租赁系统
-- 订单主表 由客户发起。暂不实现。
+- 订单主表 记录客户发起的订单。
+  rental_booking | CREATE TABLE `rental_booking` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `booking_code` varchar(32) NOT NULL,
+  `customer_id` bigint unsigned DEFAULT NULL,
+  `vehicle_id` int NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `pickup_mode` enum('store','delivery') NOT NULL DEFAULT 'store',
+  `pickup_store_id` int DEFAULT NULL,
+  `pickup_address_jp` varchar(255) DEFAULT NULL,
+  `pickup_postcode` varchar(16) DEFAULT NULL,
+  `pickup_lat` decimal(10,7) DEFAULT NULL,
+  `pickup_lng` decimal(10,7) DEFAULT NULL,
+  `dropoff_mode` enum('store','pickup') NOT NULL DEFAULT 'store',
+  `dropoff_store_id` int DEFAULT NULL,
+  `dropoff_address_jp` varchar(255) DEFAULT NULL,
+  `dropoff_postcode` varchar(16) DEFAULT NULL,
+  `dropoff_lat` decimal(10,7) DEFAULT NULL,
+  `dropoff_lng` decimal(10,7) DEFAULT NULL,
+  `status` enum('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
+  `currency` char(3) NOT NULL DEFAULT 'JPY',
+  `price_snapshot` json NOT NULL,
+  `payment_status` enum('unpaid','authorized','paid','partially_refunded','refunded','failed') NOT NULL DEFAULT 'unpaid',
+  `deposit_status` enum('none','authorized','captured','released') NOT NULL DEFAULT 'none',
+  `note` text,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `updated_by` int DEFAULT NULL,
+  `access_token` varchar(64) NOT NULL,
+  `access_token_expires_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_rental_booking_code` (`booking_code`),
+  UNIQUE KEY `uk_rental_booking_access_token` (`access_token`),
+  KEY `idx_booking_vehicle_date` (`vehicle_id`,`start_date`,`end_date`),
+  KEY `idx_booking_status` (`status`),
+  KEY `idx_booking_customer` (`customer_id`),
+  KEY `fk_booking_updated_by` (`updated_by`),
+  CONSTRAINT `fk_booking_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_booking_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicle` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  
+  rental_booking.price_snapshot sample:
+    {
+  "pricing_version": "v1",
+  "days": 7,
+  "base": {
+    "daily_price": 12000,
+    "base_rent": 84000
+  },
+  "longterm_discount": {
+    "rule_id": 3,
+    "type": "percent",
+    "value": 90,
+    "discounted_rent": 75600
+  },
+  "insurance": {
+    "per_day": 800,
+    "total": 5600
+  },
+  "deposit": 30000,
+  "services": [
+    {"service_id": 1, "name": "チャイルドシート", "pricing": "per_day", "unit_price": 500, "qty": 1, "total": 3500}
+  ],
+  "tax": {
+    "rate": 10.0,
+    "taxable": 79100,
+    "amount": 7910
+  },
+  "total": 87010
+}
+
+  
 - 客户证件表（按订单绑定）。支持驾照 + 身份证件/在留卡/护照，多份文件，且带审核状态。暂不实现。
 - 订单短时锁，防止多人同时提交同车同日期。暂不实现。
 - 运营屏蔽区间，用来表达“仅某几天不可租”（维修、内部用车、调车）。暂不实现。
@@ -599,7 +688,6 @@ identity 唯一性：同一邮箱/手机号只能绑定到一个 customer（uq_i
   CONSTRAINT fk_pricing_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
   CONSTRAINT fk_pricing_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 
 
 - 折扣表
@@ -663,57 +751,20 @@ rent_final = max(discounted_rent, 0)
   CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-- 送车/还车费用阶梯
-  CREATE TABLE rental_delivery_fee_tier (
-  id INT NOT NULL AUTO_INCREMENT,
-  min_km DECIMAL(8,2) NOT NULL,
-  max_km DECIMAL(8,2) DEFAULT NULL,
-  fee_amount INT NOT NULL,
-  currency CHAR(3) NOT NULL DEFAULT 'JPY',
-  is_active TINYINT(1) NOT NULL DEFAULT 1,
-  PRIMARY KEY (id),
-  KEY idx_delivery_fee_km (min_km, max_km, is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+-  rental_delivery_fee_tier表，为送车/还车服务规定距离和费用。 （距离为客户指定地方到该车所属的门店的距离)
+  rental_delivery_fee_tier | CREATE TABLE `rental_delivery_fee_tier` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `min_km` decimal(6,2) NOT NULL DEFAULT '0.00',
+  `max_km` decimal(6,2) DEFAULT NULL,
+  `action` enum('fixed_fee','manual_quote','not_supported') NOT NULL,
+  `fee` int DEFAULT NULL COMMENT 'JPY, only for fixed_fee',
+  `note` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `priority` int NOT NULL DEFAULT '100',
+  PRIMARY KEY (`id`),
+  KEY `idx_delivery_tier` (`is_active`,`priority`,`min_km`,`max_km`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
-- 租车订单
-  CREATE TABLE rental_booking (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  vehicle_id INT NOT NULL,
-  customer_id BIGINT UNSIGNED NOT NULL,
-
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-
-  pickup_method ENUM('store','address') NOT NULL,
-  pickup_store_id INT DEFAULT NULL,
-  pickup_address VARCHAR(255) DEFAULT NULL,
-  pickup_lat DECIMAL(10,7) DEFAULT NULL,
-  pickup_lng DECIMAL(10,7) DEFAULT NULL,
-
-  dropoff_method ENUM('store','address') NOT NULL,
-  dropoff_store_id INT DEFAULT NULL,
-  dropoff_address VARCHAR(255) DEFAULT NULL,
-  dropoff_lat DECIMAL(10,7) DEFAULT NULL,
-  dropoff_lng DECIMAL(10,7) DEFAULT NULL,
-
-  price_snapshot JSON NOT NULL,
-  access_token VARCHAR(64) NOT NULL,
-  status ENUM('pending','awaiting_payment','confirmed','cancelled') NOT NULL DEFAULT 'pending',
-
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_booking_token (access_token),
-  KEY idx_booking_vehicle (vehicle_id),
-  KEY idx_booking_customer (customer_id),
-  KEY idx_booking_status (status),
-  CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
-  CONSTRAINT fk_booking_customer FOREIGN KEY (customer_id) REFERENCES customer(id) ON DELETE CASCADE,
-  CONSTRAINT fk_booking_pickup_store FOREIGN KEY (pickup_store_id) REFERENCES store(id) ON DELETE SET NULL,
-  CONSTRAINT fk_booking_dropoff_store FOREIGN KEY (dropoff_store_id) REFERENCES store(id) ON DELETE SET NULL,
-  CONSTRAINT chk_booking_price_snapshot_json CHECK (JSON_VALID(price_snapshot))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 推荐状态流：
 
