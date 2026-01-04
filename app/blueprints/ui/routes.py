@@ -28,6 +28,7 @@ from ...repositories.master_data_repo import (
     list_colors,
     list_enums,
 )
+from ...repositories.store_repo import list_stores
 from ...repositories.vehicle_media_repo import (
     list_vehicle_media,
     create_vehicle_media,
@@ -128,12 +129,7 @@ VEHICLE_FIELDS = [
     {"name": "ownership_type", "label_key": "vehicle_edit.fields.ownership_type", "type": "text"},
     {"name": "owner_id", "label_key": "vehicle_edit.fields.owner_id", "type": "text"},
     {"name": "driver_id", "label_key": "vehicle_edit.fields.driver_id", "type": "text"},
-    {"name": "garage_name", "label_key": "vehicle_edit.fields.garage_name", "type": "text"},
-    {"name": "garage_address_jp", "label_key": "vehicle_edit.fields.garage_address_jp", "type": "text"},
-    {"name": "garage_address_cn", "label_key": "vehicle_edit.fields.garage_address_cn", "type": "text"},
-    {"name": "garage_postcode", "label_key": "vehicle_edit.fields.garage_postcode", "type": "text"},
-    {"name": "garage_lat", "label_key": "vehicle_edit.fields.garage_lat", "type": "text"},
-    {"name": "garage_lng", "label_key": "vehicle_edit.fields.garage_lng", "type": "text"},
+    {"name": "store_id", "label_key": "vehicle_edit.fields.store_id", "type": "select", "options_key": "stores"},
     {"name": "purchase_date", "label_key": "vehicle_edit.fields.purchase_date", "type": "date"},
     {"name": "purchase_price", "label_key": "vehicle_edit.fields.purchase_price", "type": "number"},
     {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
@@ -142,8 +138,7 @@ VEHICLE_FIELDS = [
 NULLABLE_NUMERIC_FIELDS = {
     "owner_id",
     "driver_id",
-    "garage_lat",
-    "garage_lng",
+    "store_id",
     "brand_id",
     "model_id",
     "color_id",
@@ -323,6 +318,7 @@ def _load_master_data():
     models = list_models()
     colors = list_colors()
     enums = list_enums()
+    stores = list_stores()
 
     brand_options = [
         {
@@ -369,6 +365,7 @@ def _load_master_data():
         "brands": brand_options,
         "models": model_options,
         "colors": color_options,
+        "stores": [{"value": row["id"], "label": row["name"]} for row in stores],
         "engine_layout": enum_groups.get("engine_layout", []),
         "fuel_type": enum_groups.get("fuel_type", []),
         "drive_type": enum_groups.get("drive_type", []),
