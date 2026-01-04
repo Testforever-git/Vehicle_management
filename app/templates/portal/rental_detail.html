@@ -5,6 +5,11 @@
 
 {% block page_title %}{{ t('portal.rental_detail_title') }}{% endblock %}
 
+{% block head_extra %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="mb-3">
   <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('portal.portal_rentals', lang=lang) }}">
@@ -42,6 +47,7 @@
     <div class="card p-3 mb-3">
       <h5 class="mb-2">{{ brand_label }} / {{ model_label }}</h5>
       <div class="text-muted">{{ t('portal.rentals_mileage') }}: {{ status.mileage if status.mileage is not none else '-' }} km</div>
+      <div class="text-muted">{{ t('portal.rental_year_label') }}: {{ vehicle.model_year_ad or '-' }}</div>
     </div>
     <div class="card p-3">
       <h5 class="mb-2">{{ t('portal.rental_description_title') }}</h5>
@@ -50,6 +56,108 @@
       {% else %}
         <p class="text-muted mb-0">{{ t('portal.rental_description_empty') }}</p>
       {% endif %}
+    </div>
+    <div class="card p-3 mt-3">
+      <h5 class="mb-3">{{ t('portal.rental_pricing_title') }}</h5>
+      <div class="row g-2 small">
+        <div class="col-md-6">
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_base_price_label') }}</span>
+            <span data-pricing="daily">{{ pricing.daily_price if pricing and pricing.daily_price is not none else '-' }} {{ t('portal.rental_rate_unit') }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_deposit_label') }}</span>
+            <span data-pricing="deposit">{{ pricing.deposit_amount if pricing and pricing.deposit_amount is not none else '-' }} {{ t('portal.rental_currency_unit') }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_insurance_label') }}</span>
+            <span data-pricing="insurance">{{ pricing.insurance_per_day if pricing and pricing.insurance_per_day is not none else '-' }} {{ t('portal.rental_rate_unit') }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_free_km_label') }}</span>
+            <span>{{ pricing.free_km_per_day if pricing and pricing.free_km_per_day is not none else '-' }} {{ t('portal.rental_distance_unit') }}</span>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_extra_km_label') }}</span>
+            <span data-pricing="extra_km">{{ pricing.extra_km_price if pricing and pricing.extra_km_price is not none else '-' }} {{ t('portal.rental_currency_unit') }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_cleaning_fee_label') }}</span>
+            <span data-pricing="cleaning">{{ pricing.cleaning_fee if pricing and pricing.cleaning_fee is not none else '-' }} {{ t('portal.rental_currency_unit') }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_late_fee_label') }}</span>
+            <span>{{ pricing.late_fee_per_day if pricing and pricing.late_fee_per_day is not none else '-' }} {{ t('portal.rental_rate_unit') }}</span>
+          </div>
+          <div class="d-flex justify-content-between text-muted">
+            <span>{{ t('portal.rental_tax_rate_label') }}</span>
+            <span>{{ pricing.tax_rate if pricing and pricing.tax_rate is not none else '-' }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card p-3 mt-3">
+      <h5 class="mb-3">{{ t('portal.rental_apply_section_title') }}</h5>
+      {% if submitted %}
+        <div class="alert alert-success">{{ t('portal.rental_submit_success') }}</div>
+      {% endif %}
+      {% if error == 'dates' %}
+        <div class="alert alert-warning">{{ t('portal.rental_date_required') }}</div>
+      {% endif %}
+      {% if not current_customer.is_authenticated %}
+        <div class="alert alert-warning">{{ t('portal.rental_login_hint') }}</div>
+      {% endif %}
+      <form method="post" action="{{ url_for('portal.portal_rental_request', vehicle_id=vehicle.id, lang=lang) }}">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ t('portal.rental_date_start') }}</label>
+            <input type="date" class="form-control" name="start_date" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ t('portal.rental_date_end') }}</label>
+            <input type="date" class="form-control" name="end_date" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_location_label') }}</label>
+            <div id="rental-map" class="border rounded" style="height: 220px;"></div>
+            <div class="text-muted small mt-2" id="rental-location-hint">{{ t('portal.rental_location_hint') }}</div>
+            <input type="hidden" name="delivery_lat" id="delivery-lat">
+            <input type="hidden" name="delivery_lng" id="delivery-lng">
+            <input type="hidden" name="delivery_address" id="delivery-address">
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_services_label') }}</label>
+            <div class="d-flex flex-column gap-2">
+              {% for service in rental_services %}
+                <label class="form-check-label">
+                  <input class="form-check-input me-2" type="checkbox" name="service_ids" value="{{ service.id }}"
+                         data-service-price="{{ service.price }}" data-service-type="{{ service.pricing_type }}">
+                  {{ service.name_jp if lang == 'jp' else service.name_cn }}
+                  <span class="text-muted small">({{ service.price }} {{ service.currency }})</span>
+                </label>
+              {% else %}
+                <div class="text-muted small">-</div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_note_label') }}</label>
+            <textarea class="form-control" name="note" rows="3"></textarea>
+          </div>
+          <div class="col-12">
+            <div class="d-flex justify-content-between border rounded p-2 bg-light">
+              <span class="text-muted">{{ t('portal.rental_estimated_total') }}</span>
+              <span class="fw-semibold" id="rental-estimated-total">-</span>
+            </div>
+            <div class="text-muted small mt-1">{{ t('portal.rental_estimated_note') }}</div>
+          </div>
+          <div class="col-12">
+            <button class="btn btn-primary w-100">{{ t('portal.rentals_apply_cta') }}</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -67,5 +175,102 @@
     }
     mainImage.src = "{{ url_for('portal.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename='__PLACEHOLDER__') }}".replace('__PLACEHOLDER__', filename);
   });
+
+  const mapContainer = document.getElementById('rental-map');
+  if (mapContainer && window.L) {
+    const defaultLatLng = [35.681236, 139.767125];
+    const map = L.map(mapContainer).setView(defaultLatLng, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+    let marker = null;
+    const latInput = document.getElementById('delivery-lat');
+    const lngInput = document.getElementById('delivery-lng');
+    const addressInput = document.getElementById('delivery-address');
+    const hint = document.getElementById('rental-location-hint');
+
+    const setMarker = (lat, lng) => {
+      if (marker) {
+        map.removeLayer(marker);
+      }
+      marker = L.marker([lat, lng]).addTo(map);
+      const zoom = map.getZoom();
+      map.setView([lat, lng], zoom);
+      if (latInput && lngInput) {
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+      }
+      if (addressInput) {
+        addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      }
+      if (hint) {
+        hint.textContent = "{{ t('portal.rental_location_selected') }}: " + `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      }
+    };
+
+    map.on('click', (event) => {
+      setMarker(event.latlng.lat, event.latlng.lng);
+    });
+
+    const consentKey = 'rentalLocationConsent';
+    const consented = localStorage.getItem(consentKey) === 'true';
+    if (!consented) {
+      const accepted = window.confirm("{{ t('portal.rental_location_consent') }}");
+      if (accepted) {
+        localStorage.setItem(consentKey, 'true');
+      }
+    }
+    if (localStorage.getItem(consentKey) === 'true' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setMarker(position.coords.latitude, position.coords.longitude);
+      });
+    }
+  }
+
+  const totalEl = document.getElementById('rental-estimated-total');
+  const startInput = document.querySelector('input[name=\"start_date\"]');
+  const endInput = document.querySelector('input[name=\"end_date\"]');
+  const serviceInputs = document.querySelectorAll('input[name=\"service_ids\"]');
+  const dailyPrice = Number(document.querySelector('[data-pricing=\"daily\"]')?.textContent?.trim().split(' ')[0]) || 0;
+  const insurancePrice = Number(document.querySelector('[data-pricing=\"insurance\"]')?.textContent?.trim().split(' ')[0]) || 0;
+  const cleaningFee = Number(document.querySelector('[data-pricing=\"cleaning\"]')?.textContent?.trim().split(' ')[0]) || 0;
+
+  const calculateDays = () => {
+    if (!startInput?.value || !endInput?.value) {
+      return 0;
+    }
+    const start = new Date(startInput.value);
+    const end = new Date(endInput.value);
+    const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return diff > 0 ? diff : 0;
+  };
+
+  const updateTotal = () => {
+    const days = calculateDays();
+    let total = 0;
+    if (days > 0) {
+      total += days * (dailyPrice + insurancePrice);
+      total += cleaningFee;
+      serviceInputs.forEach((input) => {
+        if (!input.checked) {
+          return;
+        }
+        const price = Number(input.dataset.servicePrice) || 0;
+        const type = input.dataset.serviceType || 'per_booking';
+        if (type === 'per_day') {
+          total += price * days;
+        } else {
+          total += price;
+        }
+      });
+    }
+    totalEl.textContent = total ? `${total} {{ t('portal.rental_currency_unit') }}` : '-';
+  };
+
+  startInput?.addEventListener('change', updateTotal);
+  endInput?.addEventListener('change', updateTotal);
+  serviceInputs.forEach((input) => input.addEventListener('change', updateTotal));
+  updateTotal();
 </script>
 {% endblock %}
