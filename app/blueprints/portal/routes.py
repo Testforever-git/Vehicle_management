@@ -706,11 +706,11 @@ def portal_rental_apply_post(vehicle_id: int):
         access_token=access_token,
         access_token_expires_at=(datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
     )
-    return redirect(url_for("portal.portal_rental_booking_magic", access_token=access_token, lang=request.args.get("lang")))
+    return redirect(url_for("portal.portal_rental_booking_magic_v2", access_token=access_token, lang=request.args.get("lang")))
 
 
-@bp.get("/portal/rentals/booking/<access_token>", endpoint="portal_rental_booking_magic")
-def portal_rental_booking_magic(access_token: str):
+@bp.get("/portal/rentals/booking/<access_token>", endpoint="portal_rental_booking_magic_v2")
+def portal_rental_booking_magic_v2(access_token: str):
     booking = get_booking_by_token(access_token)
     if not booking:
         abort(404)
