@@ -23,7 +23,6 @@ from ...repositories.audit_setting_repo import (
 )
 from ...repositories.rental_pricing_repo import list_rental_pricing, upsert_rental_pricing
 from ...repositories.rental_request_repo import list_rental_requests
-from ...repositories.rental_booking_repo import list_rental_bookings
 from ...repositories.rental_discount_repo import (
     list_rental_discount_rules,
     create_rental_discount_rule,
@@ -924,45 +923,28 @@ def rental_requests():
     if not _require_admin():
         return redirect(url_for("ui.dashboard"))
     lang = request.args.get("lang") or "jp"
-    bookings = list_rental_bookings()  # 现在显示租车订单而不是申请
+    requests = list_rental_requests()
     service_rows = list_rental_services(include_inactive=True)
     service_lookup = {
         row["id"]: (row.get("name_jp"), row.get("name_cn")) for row in service_rows
     }
-    for row in bookings:
-        # 解析服务ID，因为现在存储在price_snapshot中
+    for row in requests:
+        raw_ids = row.get("service_ids")
         service_names = []
-        if row.get("price_snapshot"):
+        if raw_ids:
             try:
-                price_snapshot = json.loads(row["price_snapshot"]) if isinstance(row["price_snapshot"], str) else row["price_snapshot"]
-                service_items = price_snapshot.get("service_items", [])
-                for item in service_items:
-                    service_id = item.get("service_id")
-                    if service_id:
-                        names = service_lookup.get(service_id)
-                        if names:
-                            service_names.append(names[0] if lang == "jp" else names[1])
+                ids = json.loads(raw_ids) if isinstance(raw_ids, str) else raw_ids
             except (TypeError, ValueError):
-                pass
+                ids = []
+            if isinstance(ids, list):
+                for service_id in ids:
+                    names = service_lookup.get(service_id)
+                    if not names:
+                        continue
+                    service_names.append(names[0] if lang == "jp" else names[1])
         row["service_names"] = service_names
     return render_template(
-        "admin/rental_requests.html",  # 重用现有模板，但更新内容
+        "admin/rental_requests.html",
         active_menu="admin_rental_requests",
-        rental_requests=bookings,
+        rental_requests=requests,
     )
-
-
-# 添加自定义过滤器
-def json_filter(value):
-    """将JSON字符串解析为Python对象"""
-    try:
-        return json.loads(value) if isinstance(value, str) else value
-    except (TypeError, ValueError):
-        return {}
-
-
-# 注册蓝图时添加过滤器
-def register_admin_routes(app):
-    """注册管理路由并添加自定义过滤器"""
-    app.jinja_env.filters['from_json'] = json_filter
-    return bp
