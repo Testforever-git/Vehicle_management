@@ -107,6 +107,12 @@
       {% if error == 'dates' %}
         <div class="alert alert-warning">{{ t('portal.rental_date_required') }}</div>
       {% endif %}
+      {% if error == 'vehicle_not_found' %}
+        <div class="alert alert-warning">{{ t('portal.rental_vehicle_not_found') }}</div>
+      {% endif %}
+      {% if error == 'pricing_not_found' %}
+        <div class="alert alert-warning">{{ t('portal.rental_pricing_not_found') }}</div>
+      {% endif %}
       {% if not current_customer.is_authenticated %}
         <div class="alert alert-warning">{{ t('portal.rental_login_hint') }}</div>
       {% endif %}
@@ -120,14 +126,91 @@
             <label class="form-label">{{ t('portal.rental_date_end') }}</label>
             <input type="date" class="form-control" name="end_date" required>
           </div>
+          
+          <!-- 交车方式选择 -->
           <div class="col-12">
-            <label class="form-label">{{ t('portal.rental_location_label') }}</label>
-            <div id="rental-map" class="border rounded" style="height: 220px;"></div>
-            <div class="text-muted small mt-2" id="rental-location-hint">{{ t('portal.rental_location_hint') }}</div>
-            <input type="hidden" name="delivery_lat" id="delivery-lat">
-            <input type="hidden" name="delivery_lng" id="delivery-lng">
-            <input type="hidden" name="delivery_address" id="delivery-address">
+            <label class="form-label">{{ t('portal.rental_pickup_method') }}</label>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="radio" name="pickup_mode" id="pickup_store" value="store" checked>
+                  <label class="form-check-label" for="pickup_store">{{ t('portal.rental_pickup_store') }}</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="radio" name="pickup_mode" id="pickup_delivery" value="delivery">
+                  <label class="form-check-label" for="pickup_delivery">{{ t('portal.rental_pickup_delivery') }}</label>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 门店取车选项 -->
+            <div id="pickup_store_options" class="mt-2">
+              <label class="form-label">{{ t('portal.rental_pickup_store_label') }}</label>
+              <select class="form-select" name="pickup_store_id">
+                <option value="">{{ t('portal.rental_select_pickup_store') }}</option>
+                <!-- 这里需要从后端传递门店列表 -->
+                {% for store in stores %}
+                <option value="{{ store.id }}">{{ store.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- 送车上门选项 -->
+            <div id="pickup_delivery_options" class="mt-2" style="display: none;">
+              <label class="form-label">{{ t('portal.rental_delivery_location_label') }}</label>
+              <div id="pickup-map" class="border rounded" style="height: 200px;"></div>
+              <div class="text-muted small mt-2" id="pickup-location-hint">{{ t('portal.rental_location_hint') }}</div>
+              <input type="hidden" name="pickup_lat" id="pickup-lat">
+              <input type="hidden" name="pickup_lng" id="pickup-lng">
+              <input type="hidden" name="pickup_address_jp" id="pickup-address">
+              <input type="hidden" name="pickup_postcode" id="pickup-postcode">
+            </div>
           </div>
+          
+          <!-- 还车方式选择 -->
+          <div class="col-12">
+            <label class="form-label">{{ t('portal.rental_dropoff_method') }}</label>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="radio" name="dropoff_mode" id="dropoff_store" value="store" checked>
+                  <label class="form-check-label" for="dropoff_store">{{ t('portal.rental_dropoff_store') }}</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="radio" name="dropoff_mode" id="dropoff_any_store" value="return_to_any">
+                  <label class="form-check-label" for="dropoff_any_store">{{ t('portal.rental_dropoff_any_store') }}</label>
+                </div>
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="radio" name="dropoff_mode" id="dropoff_delivery" value="delivery">
+                  <label class="form-check-label" for="dropoff_delivery">{{ t('portal.rental_dropoff_delivery') }}</label>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 还车到门店选项 -->
+            <div id="dropoff_store_options" class="mt-2">
+              <label class="form-label">{{ t('portal.rental_dropoff_store_label') }}</label>
+              <select class="form-select" name="dropoff_store_id">
+                <option value="">{{ t('portal.rental_select_dropoff_store') }}</option>
+                <!-- 这里需要从后端传递门店列表 -->
+                {% for store in stores %}
+                <option value="{{ store.id }}">{{ store.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <!-- 还车上门选项 -->
+            <div id="dropoff_delivery_options" class="mt-2" style="display: none;">
+              <label class="form-label">{{ t('portal.rental_delivery_location_label') }}</label>
+              <div id="dropoff-map" class="border rounded" style="height: 200px;"></div>
+              <div class="text-muted small mt-2" id="dropoff-location-hint">{{ t('portal.rental_location_hint') }}</div>
+              <input type="hidden" name="dropoff_lat" id="dropoff-lat">
+              <input type="hidden" name="dropoff_lng" id="dropoff-lng">
+              <input type="hidden" name="dropoff_address_jp" id="dropoff-address">
+              <input type="hidden" name="dropoff_postcode" id="dropoff-postcode">
+            </div>
+          </div>
+          
           <div class="col-12">
             <label class="form-label">{{ t('portal.rental_services_label') }}</label>
             <div class="d-flex flex-column gap-2">
@@ -177,56 +260,165 @@
     mainImage.src = "{{ url_for('portal.portal_vehicle_image', vin=vehicle.vin, category='vehicle_photo', filename='__PLACEHOLDER__') }}".replace('__PLACEHOLDER__', filename);
   });
 
-  const mapContainer = document.getElementById('rental-map');
-  if (mapContainer && window.L) {
-    const defaultLatLng = [35.681236, 139.767125];
-    const map = L.map(mapContainer).setView(defaultLatLng, 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-    let marker = null;
-    const latInput = document.getElementById('delivery-lat');
-    const lngInput = document.getElementById('delivery-lng');
-    const addressInput = document.getElementById('delivery-address');
-    const hint = document.getElementById('rental-location-hint');
+  // 交车方式选择逻辑
+  const pickupStoreRadio = document.getElementById('pickup_store');
+  const pickupDeliveryRadio = document.getElementById('pickup_delivery');
+  const pickupStoreOptions = document.getElementById('pickup_store_options');
+  const pickupDeliveryOptions = document.getElementById('pickup_delivery_options');
+  
+  pickupStoreRadio?.addEventListener('change', function() {
+    if (this.checked) {
+      pickupStoreOptions.style.display = 'block';
+      pickupDeliveryOptions.style.display = 'none';
+    }
+  });
+  
+  pickupDeliveryRadio?.addEventListener('change', function() {
+    if (this.checked) {
+      pickupStoreOptions.style.display = 'none';
+      pickupDeliveryOptions.style.display = 'block';
+      
+      // 初始化地图
+      if (window.L && document.getElementById('pickup-map') && !window.pickupMap) {
+        const defaultLatLng = [35.681236, 139.767125];
+        window.pickupMap = L.map('pickup-map').setView(defaultLatLng, 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(window.pickupMap);
+        
+        let marker = null;
+        const latInput = document.getElementById('pickup-lat');
+        const lngInput = document.getElementById('pickup-lng');
+        const addressInput = document.getElementById('pickup-address');
+        const hint = document.getElementById('pickup-location-hint');
 
-    const setMarker = (lat, lng) => {
-      if (marker) {
-        map.removeLayer(marker);
-      }
-      marker = L.marker([lat, lng]).addTo(map);
-      const zoom = map.getZoom();
-      map.setView([lat, lng], zoom);
-      if (latInput && lngInput) {
-        latInput.value = lat.toFixed(6);
-        lngInput.value = lng.toFixed(6);
-      }
-      if (addressInput) {
-        addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-      }
-      if (hint) {
-        hint.textContent = "{{ t('portal.rental_location_selected') }}: " + `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-      }
-    };
+        const setMarker = (lat, lng) => {
+          if (marker) {
+            window.pickupMap.removeLayer(marker);
+          }
+          marker = L.marker([lat, lng]).addTo(window.pickupMap);
+          const zoom = window.pickupMap.getZoom();
+          window.pickupMap.setView([lat, lng], zoom);
+          if (latInput && lngInput) {
+            latInput.value = lat.toFixed(6);
+            lngInput.value = lng.toFixed(6);
+          }
+          if (addressInput) {
+            addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          }
+          if (hint) {
+            hint.textContent = "{{ t('portal.rental_location_selected') }}: " + `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          }
+        };
 
-    map.on('click', (event) => {
-      setMarker(event.latlng.lat, event.latlng.lng);
-    });
+        window.pickupMap.on('click', (event) => {
+          setMarker(event.latlng.lat, event.latlng.lng);
+        });
 
-    const consentKey = 'rentalLocationConsent';
-    const consented = localStorage.getItem(consentKey) === 'true';
-    if (!consented) {
-      const accepted = window.confirm("{{ t('portal.rental_location_consent') }}");
-      if (accepted) {
-        localStorage.setItem(consentKey, 'true');
+        const consentKey = 'rentalLocationConsent';
+        const consented = localStorage.getItem(consentKey) === 'true';
+        if (!consented) {
+          const accepted = window.confirm("{{ t('portal.rental_location_consent') }}");
+          if (accepted) {
+            localStorage.setItem(consentKey, 'true');
+          }
+        }
+        if (localStorage.getItem(consentKey) === 'true' && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((position) => {
+            setMarker(position.coords.latitude, position.coords.longitude);
+          });
+        }
       }
     }
-    if (localStorage.getItem(consentKey) === 'true' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setMarker(position.coords.latitude, position.coords.longitude);
-      });
+  });
+
+  // 还车方式选择逻辑
+  const dropoffStoreRadio = document.getElementById('dropoff_store');
+  const dropoffAnyStoreRadio = document.getElementById('dropoff_any_store');
+  const dropoffDeliveryRadio = document.getElementById('dropoff_delivery');
+  const dropoffStoreOptions = document.getElementById('dropoff_store_options');
+  const dropoffDeliveryOptions = document.getElementById('dropoff_delivery_options');
+  
+  function updateDropoffOptions() {
+    if (dropoffAnyStoreRadio?.checked) {
+      dropoffStoreOptions.style.display = 'block';
+      dropoffDeliveryOptions.style.display = 'none';
+    } else if (dropoffDeliveryRadio?.checked) {
+      dropoffStoreOptions.style.display = 'none';
+      dropoffDeliveryOptions.style.display = 'block';
+      
+      // 初始化地图
+      if (window.L && document.getElementById('dropoff-map') && !window.dropoffMap) {
+        const defaultLatLng = [35.681236, 139.767125];
+        window.dropoffMap = L.map('dropoff-map').setView(defaultLatLng, 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(window.dropoffMap);
+        
+        let marker = null;
+        const latInput = document.getElementById('dropoff-lat');
+        const lngInput = document.getElementById('dropoff-lng');
+        const addressInput = document.getElementById('dropoff-address');
+        const hint = document.getElementById('dropoff-location-hint');
+
+        const setMarker = (lat, lng) => {
+          if (marker) {
+            window.dropoffMap.removeLayer(marker);
+          }
+          marker = L.marker([lat, lng]).addTo(window.dropoffMap);
+          const zoom = window.dropoffMap.getZoom();
+          window.dropoffMap.setView([lat, lng], zoom);
+          if (latInput && lngInput) {
+            latInput.value = lat.toFixed(6);
+            lngInput.value = lng.toFixed(6);
+          }
+          if (addressInput) {
+            addressInput.value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          }
+          if (hint) {
+            hint.textContent = "{{ t('portal.rental_location_selected') }}: " + `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          }
+        };
+
+        window.dropoffMap.on('click', (event) => {
+          setMarker(event.latlng.lat, event.latlng.lng);
+        });
+
+        const consentKey = 'rentalLocationConsent';
+        const consented = localStorage.getItem(consentKey) === 'true';
+        if (!consented) {
+          const accepted = window.confirm("{{ t('portal.rental_location_consent') }}");
+          if (accepted) {
+            localStorage.setItem(consentKey, 'true');
+          }
+        }
+        if (localStorage.getItem(consentKey) === 'true' && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((position) => {
+            setMarker(position.coords.latitude, position.coords.longitude);
+          });
+        }
+      }
+    } else {
+      dropoffStoreOptions.style.display = 'block';
+      dropoffDeliveryOptions.style.display = 'none';
     }
+  }
+
+  dropoffStoreRadio?.addEventListener('change', updateDropoffOptions);
+  dropoffAnyStoreRadio?.addEventListener('change', updateDropoffOptions);
+  dropoffDeliveryRadio?.addEventListener('change', updateDropoffOptions);
+
+  // 初始化显示状态
+  if (pickupStoreRadio && pickupStoreRadio.checked) {
+    pickupStoreOptions.style.display = 'block';
+  }
+  if (pickupDeliveryRadio && pickupDeliveryRadio.checked) {
+    pickupDeliveryOptions.style.display = 'block';
+  }
+  if (dropoffStoreRadio && dropoffStoreRadio.checked) {
+    dropoffStoreOptions.style.display = 'block';
   }
 
   const totalEl = document.getElementById('rental-estimated-total');
