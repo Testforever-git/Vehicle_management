@@ -104,5 +104,64 @@
       </div>
     </div>
   </div>
+
+  <!-- 上传资料部分 -->
+  <div class="card mt-4 p-4">
+    <h5 class="mb-3">{{ t('portal.rental_upload_documents') }}</h5>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label class="form-label">{{ t('portal.rental_driving_license') }}</label>
+          <input type="file" class="form-control" accept="image/*,application/pdf">
+          <div class="form-text">{{ t('portal.rental_upload_hint') }}</div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="mb-3">
+          <label class="form-label">{{ t('portal.rental_identity_document') }}</label>
+          <input type="file" class="form-control" accept="image/*,application/pdf">
+          <div class="form-text">{{ t('portal.rental_upload_hint') }}</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-outline-primary w-100 mt-2" id="upload-btn">{{ t('portal.rental_upload_cta') }}</button>
+  </div>
+
+  <!-- 支付链接部分 -->
+  <div class="card mt-4 p-4">
+    <h5 class="mb-3">{{ t('portal.rental_payment_section') }}</h5>
+    <p class="text-muted">{{ t('portal.rental_payment_description') }}</p>
+    <a href="#" class="btn btn-primary w-100" id="payment-btn">{{ t('portal.rental_payment_cta') }} - {{ price_snapshot.estimated_total or 0 }} {{ t('portal.rental_currency_unit') }}</a>
+  </div>
 </div>
+
+<script>
+  // 模拟上传功能
+  document.getElementById('upload-btn')?.addEventListener('click', function() {
+    const licenseFile = document.querySelector('input[accept="image/*,application/pdf"]:first-of-type');
+    const identityFile = document.querySelector('input[accept="image/*,application/pdf"]:last-of-type');
+    
+    if (!licenseFile.files.length && !identityFile.files.length) {
+      alert('{{ t('portal.rental_upload_warning') }}');
+      return;
+    }
+    
+    // 模拟上传过程
+    this.innerHTML = '{{ t('portal.rental_uploading') }}...';
+    this.disabled = true;
+    
+    setTimeout(() => {
+      this.innerHTML = '{{ t('portal.rental_upload_success') }}';
+      this.classList.remove('btn-outline-primary');
+      this.classList.add('btn-success');
+    }, 1500);
+  });
+  
+  // 模拟支付功能
+  document.getElementById('payment-btn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    alert('{{ t('portal.rental_payment_mock_message') }}');
+    // 在实际实现中，这里会跳转到真实的支付网关
+  });
+</script>
 {% endblock %}
