@@ -40,27 +40,17 @@
           <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.user_list', lang=lang) }}">
-                {{ t('nav.admin_users') }}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="{{ url_for('admin.customer_list', lang=lang) }}">
-                {{ t('nav.admin_customers') }}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="{{ url_for('admin.field_permissions', lang=lang) }}">
-                {{ t('nav.field_permissions') }}
+                {{ t('nav.admin_user_permissions') }}
               </a>
             </li>
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.audit_log', lang=lang) }}">
-                {{ t('nav.audit_log') }}
+                {{ t('nav.admin_audit_log') }}
               </a>
             </li>
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.dictionaries', lang=lang) }}">
-                {{ t('nav.admin_dictionaries') }}
+                {{ t('nav.admin_master_data') }}
               </a>
             </li>
             <li>
@@ -70,12 +60,7 @@
             </li>
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.rental_pricing', lang=lang) }}">
-                {{ t('nav.admin_rental_pricing') }}
-              </a>
-            </li>
-            <li>
-              <a class="dropdown-item" href="{{ url_for('admin.rental_requests', lang=lang) }}">
-                {{ t('nav.admin_rental_requests') }}
+                {{ t('nav.admin_rentals') }}
               </a>
             </li>
           </ul>

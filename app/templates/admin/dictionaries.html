@@ -3,6 +3,11 @@
 {% block page_title %}{{ t('admin_dictionaries.page_title') }}{% endblock %}
 
 {% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.feature_catalog', lang=lang) }}">
+    {{ t('admin_dictionaries.feature_catalog_link') }}
+  </a>
+</div>
 <div class="card p-3 mb-3">
   <h5 class="mb-3">{{ t('admin_dictionaries.brand_section') }}</h5>
   <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.dictionary_actions', lang=lang) }}">
