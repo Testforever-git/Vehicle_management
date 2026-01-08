@@ -18,6 +18,7 @@ jp:
   create: "作成"
   update: "更新"
   delete: "削除"
+  feature_catalog_link: "装備カタログへ"
   empty: "データがありません"
 cn:
   page_title: "主数据管理"
@@ -39,4 +40,5 @@ cn:
   create: "新增"
   update: "更新"
   delete: "删除"
+  feature_catalog_link: "前往配置字典"
   empty: "暂无数据"

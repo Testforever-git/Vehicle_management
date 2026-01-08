@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_feature_catalog.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">{{ t('admin_feature_catalog.create_title') }}</h5>
+  <form class="row g-2 mb-3" method="post" action="{{ url_for('admin.feature_catalog_actions', lang=lang) }}">
+    <input type="hidden" name="action" value="create">
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_feature_catalog.code') }}</label>
+      <input class="form-control" name="code" required>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_feature_catalog.name_jp') }}</label>
+      <input class="form-control" name="name_jp" required>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_feature_catalog.name_cn') }}</label>
+      <input class="form-control" name="name_cn" required>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_feature_catalog.value_type') }}</label>
+      <select class="form-select" name="value_type">
+        <option value="bool">bool</option>
+        <option value="enum">enum</option>
+        <option value="int">int</option>
+        <option value="text">text</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">{{ t('admin_feature_catalog.category_code') }}</label>
+      <input class="form-control" name="category_code">
+    </div>
+    <div class="col-md-1">
+      <label class="form-label">{{ t('admin_feature_catalog.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_feature_catalog.active_yes') }}</option>
+        <option value="0">{{ t('admin_feature_catalog.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-1 d-flex align-items-end">
+      <button class="btn btn-primary w-100">{{ t('admin_feature_catalog.create') }}</button>
+    </div>
+    <div class="col-12">
+      <label class="form-label">{{ t('admin_feature_catalog.enum_options_json') }}</label>
+      <textarea class="form-control" name="enum_options_json" rows="2"></textarea>
+      <div class="form-text">{{ t('admin_feature_catalog.enum_options_hint') }}</div>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>{{ t('admin_feature_catalog.code') }}</th>
+          <th>{{ t('admin_feature_catalog.name_jp') }}</th>
+          <th>{{ t('admin_feature_catalog.name_cn') }}</th>
+          <th>{{ t('admin_feature_catalog.value_type') }}</th>
+          <th>{{ t('admin_feature_catalog.category_code') }}</th>
+          <th>{{ t('admin_feature_catalog.active') }}</th>
+          <th>{{ t('admin_feature_catalog.enum_options_json') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for feature in features %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.feature_catalog_actions', lang=lang) }}">
+            <input type="hidden" name="action" value="update">
+            <td>
+              <input class="form-control form-control-sm" name="code" value="{{ feature.code }}" readonly>
+            </td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ feature.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ feature.name_cn }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="value_type">
+                {% for vt in ['bool','enum','int','text'] %}
+                  <option value="{{ vt }}" {% if feature.value_type == vt %}selected{% endif %}>{{ vt }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><input class="form-control form-control-sm" name="category_code" value="{{ feature.category_code }}"></td>
+            <td>
+              <select class="form-select form-select-sm" name="is_active">
+                <option value="1" {% if feature.is_active %}selected{% endif %}>{{ t('admin_feature_catalog.active_yes') }}</option>
+                <option value="0" {% if not feature.is_active %}selected{% endif %}>{{ t('admin_feature_catalog.active_no') }}</option>
+              </select>
+            </td>
+            <td>
+              <textarea class="form-control form-control-sm" name="enum_options_json" rows="2">{{ feature.enum_options_json or '' }}</textarea>
+            </td>
+            <td class="text-nowrap">
+              <button class="btn btn-outline-primary btn-sm" name="action" value="update">
+                {{ t('admin_feature_catalog.update') }}
+              </button>
+              <button class="btn btn-outline-danger btn-sm ms-1" name="action" value="delete">
+                {{ t('admin_feature_catalog.delete') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-muted">{{ t('admin_feature_catalog.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

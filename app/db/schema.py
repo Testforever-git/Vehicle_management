@@ -109,6 +109,100 @@ def _create_tables():
 
     execute(
         """
+        CREATE TABLE IF NOT EXISTS feature_catalog (
+          code VARCHAR(64) NOT NULL,
+          name_jp VARCHAR(128) NOT NULL,
+          name_cn VARCHAR(128) NOT NULL,
+          value_type ENUM('bool','enum','int','text') NOT NULL DEFAULT 'bool',
+          enum_options_json JSON DEFAULT NULL,
+          category_code VARCHAR(32) DEFAULT NULL,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (code),
+          KEY idx_category (category_code),
+          KEY idx_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS vehicle_feature_value (
+          vehicle_id INT NOT NULL,
+          feature_code VARCHAR(64) NOT NULL,
+          value_bool TINYINT(1) DEFAULT NULL,
+          value_enum VARCHAR(64) DEFAULT NULL,
+          value_int INT DEFAULT NULL,
+          value_text VARCHAR(255) DEFAULT NULL,
+          source ENUM('manual','import') NOT NULL DEFAULT 'manual',
+          updated_by INT DEFAULT NULL,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (vehicle_id, feature_code),
+          KEY idx_feature (feature_code),
+          CONSTRAINT fk_vfv_vehicle
+            FOREIGN KEY (vehicle_id) REFERENCES vehicle(id)
+            ON DELETE RESTRICT ON UPDATE CASCADE,
+          CONSTRAINT fk_vfv_feature
+            FOREIGN KEY (feature_code) REFERENCES feature_catalog(code)
+            ON DELETE RESTRICT ON UPDATE CASCADE,
+          CONSTRAINT fk_vfv_updated_by
+            FOREIGN KEY (updated_by) REFERENCES user(id)
+            ON DELETE SET NULL ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        """
+    )
+
+    if not fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+          AND column_name = 'seat_count'
+        """
+    ):
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD COLUMN seat_count TINYINT UNSIGNED DEFAULT NULL COMMENT '座位数'
+            """
+        )
+    if not fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+          AND column_name = 'door_count'
+        """
+    ):
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD COLUMN door_count TINYINT UNSIGNED DEFAULT NULL COMMENT '车门数'
+            """
+        )
+    if not fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+          AND column_name = 'body_type_code'
+        """
+    ):
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD COLUMN body_type_code ENUM(
+              'sedan','hatchback','wagon','suv','mpv','van','pickup','truck','coupe','convertible'
+            ) DEFAULT NULL COMMENT '车身类型'
+            """
+        )
+
+    execute(
+        """
         CREATE TABLE IF NOT EXISTS audit_log (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             vehicle_id INT NULL,
@@ -496,6 +590,9 @@ def _seed_field_permissions():
     rules = [
         ("vehicle", "brand_id", "basic", False, "车辆品牌"),
         ("vehicle", "model_id", "basic", False, "车辆型号"),
+        ("vehicle", "seat_count", "basic", False, "座位数"),
+        ("vehicle", "door_count", "basic", False, "车门数"),
+        ("vehicle", "body_type_code", "basic", False, "车身类型"),
         ("vehicle", "plate_no", "basic", False, "车牌号"),
         ("vehicle", "vin", "advanced", False, "VIN"),
         ("vehicle", "type_designation_code", "advanced", False, "型式指定番号"),
