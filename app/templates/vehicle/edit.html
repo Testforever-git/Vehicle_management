@@ -73,6 +73,59 @@
     {% endfor %}
   </div>
 
+  <div class="row g-3 mt-3">
+    <div class="col-12">
+      <h5 class="mb-2">{{ t('vehicle_edit.feature_section_title') }}</h5>
+    </div>
+    {% if feature_items %}
+      {% set category = namespace(current=None) %}
+      {% for feature in feature_items %}
+        {% if feature.category_code and feature.category_code != category.current %}
+          {% set category.current = feature.category_code %}
+          <div class="col-12">
+            <div class="fw-semibold text-muted">{{ feature.category_code }}</div>
+          </div>
+        {% endif %}
+        <div class="col-md-4">
+          <div class="mb-3 ac-field ac-field-editable">
+            <label class="form-label ac-field-label">
+              {{ feature.name_jp if lang == 'jp' else feature.name_cn }}
+              {% if not feature.is_active %}
+                <span class="text-muted">({{ t('vehicle_edit.inactive_label') }})</span>
+              {% endif %}
+            </label>
+            {% if feature.value_type == 'bool' %}
+              {% set selected = feature.value_bool|string if feature.value_bool is not none else '' %}
+              <select class="form-select ac-input" name="feature_{{ feature.code }}">
+                <option value="">{{ t('vehicle_edit.select_placeholder') }}</option>
+                <option value="1" {% if selected == '1' %}selected{% endif %}>{{ t('vehicle_edit.feature_bool_yes') }}</option>
+                <option value="0" {% if selected == '0' %}selected{% endif %}>{{ t('vehicle_edit.feature_bool_no') }}</option>
+              </select>
+            {% elif feature.value_type == 'enum' %}
+              <select class="form-select ac-input" name="feature_{{ feature.code }}">
+                <option value="">{{ t('vehicle_edit.select_placeholder') }}</option>
+                {% for option in feature.enum_options %}
+                  {% set option_label = option.label_jp if lang == 'jp' else option.label_cn %}
+                  <option value="{{ option.value }}" {% if option.value|string == feature.value_enum|string %}selected{% endif %}>
+                    {{ option_label }}
+                  </option>
+                {% endfor %}
+              </select>
+            {% elif feature.value_type == 'int' %}
+              <input class="form-control ac-input" type="number" name="feature_{{ feature.code }}" value="{{ feature.value_int or '' }}">
+            {% else %}
+              <input class="form-control ac-input" type="text" name="feature_{{ feature.code }}" value="{{ feature.value_text or '' }}">
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="col-12">
+        <p class="ac-text-meta">{{ t('vehicle_edit.feature_empty') }}</p>
+      </div>
+    {% endif %}
+  </div>
+
   {% if is_new %}
     <div class="row g-3 mt-3">
       <div class="col-12">
