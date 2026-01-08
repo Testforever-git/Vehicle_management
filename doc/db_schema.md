@@ -25,7 +25,7 @@
 - UNIQUE(vin)
 
 ### Fields (summary)
-vehicle | CREATE TABLE `vehicle` (
+ vehicle | CREATE TABLE `vehicle` (
   `id` int NOT NULL AUTO_INCREMENT,
   `brand_id` int NOT NULL,
   `model_id` int NOT NULL,
@@ -55,6 +55,9 @@ vehicle | CREATE TABLE `vehicle` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `updated_by` int DEFAULT NULL,
   `etc_type` enum('none','etc1','etc2') NOT NULL DEFAULT 'none' COMMENT 'ETC设备类型: none=无, etc1=ETC1.0, etc2=ETC2.0',
+  `seat_count` tinyint unsigned DEFAULT NULL COMMENT '座位数',
+  `door_count` tinyint unsigned DEFAULT NULL COMMENT '车门数',
+  `body_type_code` enum('sedan','hatchback','wagon','suv','mpv','van','pickup','truck','coupe','convertible') DEFAULT NULL COMMENT '车身类型',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_vehicle_vin` (`vin`),
   KEY `idx_vehicle_plate_no` (`plate_no`),
@@ -67,8 +70,7 @@ vehicle | CREATE TABLE `vehicle` (
   CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
   CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
-  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
 2.1 Master Data（主数据/字典）规则
@@ -157,6 +159,63 @@ store | CREATE TABLE `store` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_store_name` (`name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci 
+
+2.7 车辆配置字典表
+CREATE TABLE feature_catalog (
+  code VARCHAR(64) NOT NULL,
+  name_jp VARCHAR(128) NOT NULL,
+  name_cn VARCHAR(128) NOT NULL,
+  value_type ENUM('bool','enum','int','text') NOT NULL DEFAULT 'bool',
+  enum_options_json JSON DEFAULT NULL,
+  category_code VARCHAR(32) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (code),
+  KEY idx_category (category_code),
+  KEY idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+用来记录车辆的各种配置。字典
+
+2.8 车辆和配置关联表
+CREATE TABLE vehicle_feature_value (
+  vehicle_id INT NOT NULL,
+  feature_code VARCHAR(64) NOT NULL,
+
+  value_bool TINYINT(1) DEFAULT NULL,
+  value_enum VARCHAR(64) DEFAULT NULL,
+  value_int INT DEFAULT NULL,
+  value_text VARCHAR(255) DEFAULT NULL,
+
+  source ENUM('manual','import') NOT NULL DEFAULT 'manual',
+  updated_by INT DEFAULT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (vehicle_id, feature_code),
+  KEY idx_feature (feature_code),
+
+  CONSTRAINT fk_vfv_vehicle
+    FOREIGN KEY (vehicle_id) REFERENCES vehicle(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_vfv_feature
+    FOREIGN KEY (feature_code) REFERENCES feature_catalog(code)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_vfv_updated_by
+    FOREIGN KEY (updated_by) REFERENCES user(id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+一辆车（vehicle）
+有很多“功能配置”（feature_catalog）
+每个功能在这辆车上都有一个“值”
+
+value_bool TINYINT(1) DEFAULT NULL
+用于 有 / 无 类型的配置，如 行车记录仪
+value_enum VARCHAR(64) DEFAULT NULL
+用于有限选项，但不是简单 yes/no的配置 如
+value_int INT DEFAULT NULL
+用于数值型配置，如雷达个数
+value_text VARCHAR(255) DEFAULT NULL
+用于少量自由文本不用于筛选，只用于展示/备注。 如 非原厂座椅/品牌音响
 
 ## 3. vehicle_status
 ### Purpose
