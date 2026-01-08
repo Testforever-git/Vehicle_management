@@ -197,6 +197,279 @@ def _create_tables():
         """
     )
 
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS store (
+          id INT NOT NULL AUTO_INCREMENT,
+          name VARCHAR(64) NOT NULL,
+          address_jp VARCHAR(255) NOT NULL,
+          postcode VARCHAR(16) DEFAULT NULL,
+          lat DECIMAL(10,7) DEFAULT NULL,
+          lng DECIMAL(10,7) DEFAULT NULL,
+          phone VARCHAR(32) DEFAULT NULL,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uk_store_name (name)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+    if fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+        """
+    ) and not fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+          AND column_name = 'garage_store_id'
+        """
+    ):
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD COLUMN garage_store_id INT DEFAULT NULL
+            """
+        )
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD KEY idx_vehicle_garage_store_id (garage_store_id)
+            """
+        )
+        execute(
+            """
+            ALTER TABLE vehicle
+            ADD CONSTRAINT fk_vehicle_garage_store
+              FOREIGN KEY (garage_store_id) REFERENCES store(id)
+              ON DELETE SET NULL ON UPDATE CASCADE
+            """
+        )
+
+    if fetch_one(
+        """
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = 'vehicle'
+        """
+    ):
+        if not fetch_one(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'vehicle'
+              AND column_name = 'seat_count'
+            """
+        ):
+            execute(
+                """
+                ALTER TABLE vehicle
+                ADD COLUMN seat_count INT DEFAULT NULL
+                """
+            )
+        if not fetch_one(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'vehicle'
+              AND column_name = 'door_count'
+            """
+        ):
+            execute(
+                """
+                ALTER TABLE vehicle
+                ADD COLUMN door_count INT DEFAULT NULL
+                """
+            )
+        if not fetch_one(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = 'vehicle'
+              AND column_name = 'body_type_code'
+            """
+        ):
+            execute(
+                """
+                ALTER TABLE vehicle
+                ADD COLUMN body_type_code VARCHAR(64) DEFAULT NULL
+                """
+            )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS rental_vehicle_pricing (
+          vehicle_id INT NOT NULL,
+          currency CHAR(3) NOT NULL DEFAULT 'JPY',
+          daily_price INT NOT NULL,
+          deposit_amount INT NOT NULL DEFAULT 0,
+          insurance_per_day INT NOT NULL DEFAULT 0,
+          free_km_per_day INT DEFAULT NULL,
+          extra_km_price INT DEFAULT NULL,
+          cleaning_fee INT NOT NULL DEFAULT 0,
+          late_fee_per_day INT NOT NULL DEFAULT 0,
+          tax_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          updated_by INT DEFAULT NULL,
+          PRIMARY KEY (vehicle_id),
+          CONSTRAINT fk_pricing_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE,
+          CONSTRAINT fk_pricing_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS feature_catalog (
+          code VARCHAR(64) NOT NULL,
+          name_jp VARCHAR(128) NOT NULL,
+          name_cn VARCHAR(128) NOT NULL,
+          value_type ENUM('bool','enum','int','text') NOT NULL DEFAULT 'bool',
+          enum_options_json JSON DEFAULT NULL,
+          category_code VARCHAR(32) DEFAULT NULL,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (code),
+          KEY idx_category (category_code),
+          KEY idx_active (is_active)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS vehicle_feature_value (
+          vehicle_id INT NOT NULL,
+          feature_code VARCHAR(64) NOT NULL,
+          value_bool TINYINT(1) DEFAULT NULL,
+          value_enum VARCHAR(64) DEFAULT NULL,
+          value_int INT DEFAULT NULL,
+          value_text VARCHAR(255) DEFAULT NULL,
+          source ENUM('manual','import') NOT NULL DEFAULT 'manual',
+          updated_by INT DEFAULT NULL,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (vehicle_id, feature_code),
+          KEY idx_feature (feature_code),
+          CONSTRAINT fk_vfv_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id)
+            ON DELETE RESTRICT ON UPDATE CASCADE,
+          CONSTRAINT fk_vfv_feature FOREIGN KEY (feature_code) REFERENCES feature_catalog(code)
+            ON DELETE RESTRICT ON UPDATE CASCADE,
+          CONSTRAINT fk_vfv_updated_by FOREIGN KEY (updated_by) REFERENCES user(id)
+            ON DELETE SET NULL ON UPDATE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS rental_longterm_discount_rule (
+          id INT NOT NULL AUTO_INCREMENT,
+          vehicle_id INT NOT NULL,
+          min_days INT NOT NULL,
+          max_days INT DEFAULT NULL,
+          discount_type ENUM('percent','amount') NOT NULL,
+          discount_value INT NOT NULL,
+          priority INT NOT NULL DEFAULT 100,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          valid_from DATE DEFAULT NULL,
+          valid_to DATE DEFAULT NULL,
+          PRIMARY KEY (id),
+          KEY idx_discount_vehicle_days (vehicle_id, min_days, max_days, is_active),
+          CONSTRAINT fk_discount_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS rental_service_catalog (
+          id INT NOT NULL AUTO_INCREMENT,
+          code VARCHAR(32) NOT NULL,
+          name_jp VARCHAR(64) NOT NULL,
+          name_cn VARCHAR(64) NOT NULL,
+          pricing_type ENUM('per_booking','per_day','per_hour','per_unit') NOT NULL,
+          price INT NOT NULL,
+          currency CHAR(3) NOT NULL DEFAULT 'JPY',
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          PRIMARY KEY (id),
+          UNIQUE KEY uk_service_code (code)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS rental_delivery_fee_tier (
+          id INT NOT NULL AUTO_INCREMENT,
+          min_km DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+          max_km DECIMAL(6,2) DEFAULT NULL,
+          action ENUM('fixed_fee','manual_quote','not_supported') NOT NULL,
+          fee INT DEFAULT NULL COMMENT 'JPY, only for fixed_fee',
+          note VARCHAR(255) DEFAULT NULL,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          priority INT NOT NULL DEFAULT 100,
+          PRIMARY KEY (id),
+          KEY idx_delivery_tier (is_active, priority, min_km, max_km)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS rental_booking (
+          id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          booking_code VARCHAR(32) NOT NULL,
+          customer_id BIGINT UNSIGNED DEFAULT NULL,
+          vehicle_id INT NOT NULL,
+          start_date DATE NOT NULL,
+          end_date DATE NOT NULL,
+          pickup_mode ENUM('store','delivery') NOT NULL DEFAULT 'store',
+          pickup_store_id INT DEFAULT NULL,
+          pickup_address_jp VARCHAR(255) DEFAULT NULL,
+          pickup_postcode VARCHAR(16) DEFAULT NULL,
+          pickup_lat DECIMAL(10,7) DEFAULT NULL,
+          pickup_lng DECIMAL(10,7) DEFAULT NULL,
+          dropoff_mode ENUM('store','pickup') NOT NULL DEFAULT 'store',
+          dropoff_store_id INT DEFAULT NULL,
+          dropoff_address_jp VARCHAR(255) DEFAULT NULL,
+          dropoff_postcode VARCHAR(16) DEFAULT NULL,
+          dropoff_lat DECIMAL(10,7) DEFAULT NULL,
+          dropoff_lng DECIMAL(10,7) DEFAULT NULL,
+          status ENUM('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
+          currency CHAR(3) NOT NULL DEFAULT 'JPY',
+          price_snapshot JSON NOT NULL,
+          payment_status ENUM('unpaid','authorized','paid','partially_refunded','refunded','failed') NOT NULL DEFAULT 'unpaid',
+          deposit_status ENUM('none','authorized','captured','released') NOT NULL DEFAULT 'none',
+          note TEXT,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          updated_by INT DEFAULT NULL,
+          access_token VARCHAR(64) NOT NULL,
+          access_token_expires_at DATETIME DEFAULT NULL,
+          PRIMARY KEY (id),
+          UNIQUE KEY uk_rental_booking_code (booking_code),
+          UNIQUE KEY uk_rental_booking_access_token (access_token),
+          KEY idx_booking_vehicle_date (vehicle_id, start_date, end_date),
+          KEY idx_booking_status (status),
+          KEY idx_booking_customer (customer_id),
+          KEY fk_booking_updated_by (updated_by),
+          CONSTRAINT fk_booking_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL,
+          CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE RESTRICT
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    )
+
 
 def _create_views():
     execute(
@@ -204,6 +477,7 @@ def _create_views():
         CREATE OR REPLACE VIEW v_vehicle_i18n AS
         SELECT
           v.*,
+          s.name AS store_name,
           b.brand_code,
           b.name_jp AS brand_jp,
           b.name_cn AS brand_cn,
@@ -218,7 +492,9 @@ def _create_views():
           ft.name_jp AS fuel_type_jp,
           ft.name_cn AS fuel_type_cn,
           dt.name_jp AS drive_type_jp,
-          dt.name_cn AS drive_type_cn
+          dt.name_cn AS drive_type_cn,
+          bt.name_jp AS body_type_jp,
+          bt.name_cn AS body_type_cn
         FROM vehicle v
         JOIN md_brand b ON b.id = v.brand_id
         JOIN md_model m ON m.id = v.model_id
@@ -232,6 +508,10 @@ def _create_views():
         LEFT JOIN md_enum dt ON dt.enum_type='drive_type'
           AND dt.enum_code=v.drive_type_code
           AND dt.is_active=1
+        LEFT JOIN md_enum bt ON bt.enum_type='body_type'
+          AND bt.enum_code=v.body_type_code
+          AND bt.is_active=1
+        LEFT JOIN store s ON s.id = v.garage_store_id
         """
     )
 
@@ -357,8 +637,7 @@ def _seed_field_permissions():
         ("vehicle", "plate_no", "basic", False, "车牌号"),
         ("vehicle", "vin", "advanced", False, "VIN"),
         ("vehicle", "type_designation_code", "advanced", False, "型式指定番号"),
-        ("vehicle", "garage_name", "advanced", True, "车库名称"),
-        ("vehicle", "garage_address_jp", "advanced", True, "车库地址"),
+        ("vehicle", "garage_store_id", "advanced", True, "所属门店"),
         ("vehicle", "purchase_price", "admin", True, "购入价格"),
         ("vehicle", "legal_doc", "advanced", False, "证件目录"),
         ("vehicle", "vehicle_photo", "advanced", False, "车辆照片目录"),

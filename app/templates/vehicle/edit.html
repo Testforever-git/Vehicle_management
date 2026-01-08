@@ -73,6 +73,61 @@
     {% endfor %}
   </div>
 
+  {% if feature_groups %}
+  <div class="card p-3 mt-3">
+    <div class="ac-title-sub">{{ t('vehicle_edit.feature_section_title') }}</div>
+    {% for category, features in feature_groups.items() %}
+      <div class="mt-3">
+        <div class="text-muted small">{{ category }}</div>
+        <div class="row g-3 mt-1">
+          {% for feature in features %}
+            <div class="col-md-4">
+              <label class="form-label">
+                {% if lang == 'jp' %}
+                  {{ feature.name_jp }}
+                {% else %}
+                  {{ feature.name_cn }}
+                {% endif %}
+              </label>
+              {% if feature.value_type == 'bool' %}
+                <input type="hidden" name="feature_{{ feature.code }}" value="0">
+                <div class="form-check">
+                  <input class="form-check-input"
+                         type="checkbox"
+                         name="feature_{{ feature.code }}"
+                         value="1"
+                         {% if feature.value_bool in [1, '1', true] %}checked{% endif %}>
+                  <label class="form-check-label">{{ t('vehicle_edit.feature_bool_label') }}</label>
+                </div>
+              {% elif feature.value_type == 'enum' %}
+                <select class="form-select" name="feature_{{ feature.code }}">
+                  <option value="">{{ t('vehicle_edit.select_placeholder') }}</option>
+                  {% for option in feature.enum_options %}
+                    {% if option is string %}
+                      {% set option_value = option %}
+                      {% set option_label = option %}
+                    {% else %}
+                      {% set option_value = option.value %}
+                      {% set option_label = option.label_jp if lang == 'jp' else option.label_cn %}
+                    {% endif %}
+                    <option value="{{ option_value }}" {% if option_value == feature.value_enum %}selected{% endif %}>
+                      {{ option_label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              {% elif feature.value_type == 'int' %}
+                <input class="form-control" type="number" name="feature_{{ feature.code }}" value="{{ feature.value_int or '' }}">
+              {% else %}
+                <input class="form-control" type="text" name="feature_{{ feature.code }}" value="{{ feature.value_text or '' }}">
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   {% if is_new %}
     <div class="row g-3 mt-3">
       <div class="col-12">

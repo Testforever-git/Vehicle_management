@@ -1,6 +1,7 @@
 # app/blueprints/ui/routes.py
 import os
 import shutil
+import json
 from datetime import date, datetime
 
 import yaml
@@ -28,6 +29,12 @@ from ...repositories.master_data_repo import (
     list_colors,
     list_enums,
 )
+from ...repositories.feature_catalog_repo import list_feature_catalog
+from ...repositories.vehicle_feature_value_repo import (
+    list_vehicle_feature_values,
+    replace_vehicle_feature_values,
+)
+from ...repositories.store_repo import list_stores
 from ...repositories.vehicle_media_repo import (
     list_vehicle_media,
     create_vehicle_media,
@@ -124,16 +131,14 @@ VEHICLE_FIELDS = [
     {"name": "displacement_cc", "label_key": "vehicle_edit.fields.displacement_cc", "type": "number"},
     {"name": "fuel_type_code", "label_key": "vehicle_edit.fields.fuel_type_code", "type": "select", "options_key": "fuel_type"},
     {"name": "drive_type_code", "label_key": "vehicle_edit.fields.drive_type_code", "type": "select", "options_key": "drive_type"},
+    {"name": "body_type_code", "label_key": "vehicle_edit.fields.body_type_code", "type": "select", "options_key": "body_type"},
     {"name": "transmission", "label_key": "vehicle_edit.fields.transmission", "type": "text"},
+    {"name": "seat_count", "label_key": "vehicle_edit.fields.seat_count", "type": "number"},
+    {"name": "door_count", "label_key": "vehicle_edit.fields.door_count", "type": "number"},
     {"name": "ownership_type", "label_key": "vehicle_edit.fields.ownership_type", "type": "text"},
     {"name": "owner_id", "label_key": "vehicle_edit.fields.owner_id", "type": "text"},
     {"name": "driver_id", "label_key": "vehicle_edit.fields.driver_id", "type": "text"},
-    {"name": "garage_name", "label_key": "vehicle_edit.fields.garage_name", "type": "text"},
-    {"name": "garage_address_jp", "label_key": "vehicle_edit.fields.garage_address_jp", "type": "text"},
-    {"name": "garage_address_cn", "label_key": "vehicle_edit.fields.garage_address_cn", "type": "text"},
-    {"name": "garage_postcode", "label_key": "vehicle_edit.fields.garage_postcode", "type": "text"},
-    {"name": "garage_lat", "label_key": "vehicle_edit.fields.garage_lat", "type": "text"},
-    {"name": "garage_lng", "label_key": "vehicle_edit.fields.garage_lng", "type": "text"},
+    {"name": "garage_store_id", "label_key": "vehicle_edit.fields.garage_store_id", "type": "select", "options_key": "stores"},
     {"name": "purchase_date", "label_key": "vehicle_edit.fields.purchase_date", "type": "date"},
     {"name": "purchase_price", "label_key": "vehicle_edit.fields.purchase_price", "type": "number"},
     {"name": "note", "label_key": "vehicle_edit.fields.note", "type": "textarea"},
@@ -142,18 +147,20 @@ VEHICLE_FIELDS = [
 NULLABLE_NUMERIC_FIELDS = {
     "owner_id",
     "driver_id",
-    "garage_lat",
-    "garage_lng",
+    "garage_store_id",
     "brand_id",
     "model_id",
     "color_id",
     "model_year_ad",
     "displacement_cc",
     "purchase_price",
+    "seat_count",
+    "door_count",
 }
 
 NULLABLE_TEXT_FIELDS = {
     "note",
+    "body_type_code",
 }
 
 PHOTO_FILE_TYPE = "photo"
@@ -303,6 +310,71 @@ def _status_payload_from_form():
     return payload
 
 
+def _feature_values_from_form(feature_groups: dict, updated_by: int):
+    rows = []
+    for features in feature_groups.values():
+        for feature in features:
+            code = feature.get("code")
+            if not code:
+                continue
+            field_name = f"feature_{code}"
+            value_type = feature.get("value_type")
+            if value_type == "bool":
+                raw = request.form.get(field_name)
+                if raw is None:
+                    continue
+                value_bool = 1 if str(raw).lower() in {"1", "true", "yes", "on"} else 0
+                rows.append(
+                    {
+                        "feature_code": code,
+                        "value_bool": value_bool,
+                        "source": "manual",
+                        "updated_by": updated_by,
+                    }
+                )
+            elif value_type == "enum":
+                raw = (request.form.get(field_name) or "").strip()
+                if raw == "":
+                    continue
+                rows.append(
+                    {
+                        "feature_code": code,
+                        "value_enum": raw,
+                        "source": "manual",
+                        "updated_by": updated_by,
+                    }
+                )
+            elif value_type == "int":
+                raw = (request.form.get(field_name) or "").strip()
+                if raw == "":
+                    continue
+                try:
+                    value_int = int(raw)
+                except ValueError:
+                    continue
+                rows.append(
+                    {
+                        "feature_code": code,
+                        "value_int": value_int,
+                        "source": "manual",
+                        "updated_by": updated_by,
+                    }
+                )
+            elif value_type == "text":
+                raw = (request.form.get(field_name) or "").strip()
+                if raw == "":
+                    continue
+                rows.append(
+                    {
+                        "feature_code": code,
+                        "value_text": raw,
+                        "source": "manual",
+                        "updated_by": updated_by,
+                    }
+                )
+    return rows
+
+
 def _build_year_options():
     conversion = _load_year_conversion()
     years = list(conversion.get("ad_to_era", {}).keys())
@@ -323,6 +395,7 @@ def _load_master_data():
     models = list_models()
     colors = list_colors()
     enums = list_enums()
+    stores = list_stores()
 
     brand_options = [
         {
@@ -365,13 +438,20 @@ def _load_master_data():
             }
         )
 
+    store_options = [
+        {"value": row["id"], "label": row["name"], "is_active": True}
+        for row in stores
+    ]
+
     return {
         "brands": brand_options,
         "models": model_options,
         "colors": color_options,
+        "stores": store_options,
         "engine_layout": enum_groups.get("engine_layout", []),
         "fuel_type": enum_groups.get("fuel_type", []),
         "drive_type": enum_groups.get("drive_type", []),
+        "body_type": enum_groups.get("body_type", []),
         "status_options": [
             {"value": "available", "label": "available", "is_active": True},
             {"value": "rented", "label": "rented", "is_active": True},
@@ -389,6 +469,34 @@ def _load_master_data():
         ],
         "model_years": _build_year_options(),
     }
+
+
+def _load_feature_groups(vehicle_id: int | None):
+    rows = list_vehicle_feature_values(vehicle_id) if vehicle_id else list_feature_catalog()
+    groups = {}
+    for row in rows:
+        category = row.get("category_code") or "default"
+        enum_options = []
+        raw_enum = row.get("enum_options_json")
+        if raw_enum:
+            try:
+                enum_options = json.loads(raw_enum)
+            except json.JSONDecodeError:
+                enum_options = []
+        groups.setdefault(category, []).append(
+            {
+                "code": row.get("code"),
+                "name_jp": row.get("name_jp"),
+                "name_cn": row.get("name_cn"),
+                "value_type": row.get("value_type"),
+                "enum_options": enum_options,
+                "value_bool": row.get("value_bool"),
+                "value_enum": row.get("value_enum"),
+                "value_int": row.get("value_int"),
+                "value_text": row.get("value_text"),
+            }
+        )
+    return groups
 
 
 def _media_rel_paths(vin: str, category: str, filenames: list[str]) -> list[str]:
@@ -658,6 +766,7 @@ def vehicle_detail(vehicle_id: int):
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
     vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
     qr_row = get_vehicle_qr_by_vehicle_id(vehicle_id)
+    feature_groups = _load_feature_groups(vehicle_id)
 
     return render_template(
         "vehicle/detail.html",
@@ -668,6 +777,7 @@ def vehicle_detail(vehicle_id: int):
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
         qr_slug=qr_row["qr_slug"] if qr_row else None,
+        feature_groups=feature_groups,
     )
 
 @bp.route("/vehicle/<int:vehicle_id>/edit", methods=["GET","POST"])
@@ -684,6 +794,7 @@ def vehicle_edit(vehicle_id: int):
         old_status = get_status(vehicle_id) or {}
         payload = _payload_from_form()
         status_payload = _status_payload_from_form()
+        feature_groups = _load_feature_groups(vehicle_id)
         vin = (payload.get("vin") or vehicle.get("vin") or "").strip()
         if not vin:
             flash(_t("vehicle_edit.messages.vin_required"), "warning")
@@ -754,6 +865,8 @@ def vehicle_edit(vehicle_id: int):
 
         payload["updated_by"] = get_current_user().user_id
         update_vehicle(vehicle_id, payload)
+        feature_rows = _feature_values_from_form(feature_groups, get_current_user().user_id)
+        replace_vehicle_feature_values(vehicle_id, feature_rows)
         _audit_changes(
             "vehicle",
             {"id": vehicle_id},
@@ -799,6 +912,7 @@ def vehicle_edit(vehicle_id: int):
     has_primary_photo = any(item["is_primary"] for item in vehicle_photos)
     status = get_status(vehicle_id) or {}
     master_data = _load_master_data()
+    feature_groups = _load_feature_groups(vehicle_id)
 
     return render_template(
         "vehicle/edit.html",
@@ -812,6 +926,7 @@ def vehicle_edit(vehicle_id: int):
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
         has_primary_photo=has_primary_photo,
+        feature_groups=feature_groups,
         form_action=url_for("ui.vehicle_edit", vehicle_id=vehicle_id, lang=request.args.get("lang")),
         cancel_url=url_for("ui.vehicle_detail", vehicle_id=vehicle_id, lang=request.args.get("lang")),
         is_new=False,
@@ -835,6 +950,7 @@ def vehicle_new():
     if request.method == "POST":
         payload = _payload_from_form()
         status_payload = _status_payload_from_form()
+        feature_groups = _load_feature_groups(None)
         vin = (payload.get("vin") or "").strip()
         if not vin:
             flash(_t("vehicle_edit.messages.vin_required"), "warning")
@@ -852,6 +968,8 @@ def vehicle_new():
         created = get_vehicle_by_vin(vin)
         if created:
             ensure_vehicle_qr(created["id"])
+            feature_rows = _feature_values_from_form(feature_groups, get_current_user().user_id)
+            replace_vehicle_feature_values(created["id"], feature_rows)
             if payload.get("etc_type") == "none":
                 status_payload["has_etc_card"] = "0"
             if status_payload:
@@ -909,6 +1027,7 @@ def vehicle_new():
         legal_docs=[],
         vehicle_photos=[],
         has_primary_photo=False,
+        feature_groups=_load_feature_groups(None),
         form_action=url_for("ui.vehicle_new", lang=request.args.get("lang")),
         cancel_url=url_for("ui.vehicle_list", lang=request.args.get("lang")),
         is_new=True,

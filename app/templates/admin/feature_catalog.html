@@ -1,0 +1,85 @@
+{% extends 'admin/base.html' %}
+{% block page_title %}{{ t('admin_feature_catalog.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3 mb-3">
+  <h5 class="mb-3">{{ t('admin_feature_catalog.create_title') }}</h5>
+  <form class="row g-2" method="post" action="{{ url_for('admin.feature_catalog', lang=lang) }}">
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_feature_catalog.code') }}</label>
+      <input class="form-control" name="code" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_feature_catalog.name_jp') }}</label>
+      <input class="form-control" name="name_jp" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_feature_catalog.name_cn') }}</label>
+      <input class="form-control" name="name_cn" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_feature_catalog.value_type') }}</label>
+      <select class="form-select" name="value_type">
+        <option value="bool">bool</option>
+        <option value="enum">enum</option>
+        <option value="int">int</option>
+        <option value="text">text</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">{{ t('admin_feature_catalog.enum_options') }}</label>
+      <input class="form-control" name="enum_options_json" placeholder='["a","b"]'>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_feature_catalog.category') }}</label>
+      <input class="form-control" name="category_code">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">{{ t('admin_feature_catalog.active') }}</label>
+      <select class="form-select" name="is_active">
+        <option value="1">{{ t('admin_feature_catalog.active_yes') }}</option>
+        <option value="0">{{ t('admin_feature_catalog.active_no') }}</option>
+      </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+      <button class="btn btn-primary w-100" type="submit">{{ t('admin_feature_catalog.save') }}</button>
+    </div>
+  </form>
+</div>
+
+<div class="card p-3">
+  <h5 class="mb-3">{{ t('admin_feature_catalog.list_title') }}</h5>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>{{ t('admin_feature_catalog.code') }}</th>
+          <th>{{ t('admin_feature_catalog.name_jp') }}</th>
+          <th>{{ t('admin_feature_catalog.name_cn') }}</th>
+          <th>{{ t('admin_feature_catalog.value_type') }}</th>
+          <th>{{ t('admin_feature_catalog.enum_options') }}</th>
+          <th>{{ t('admin_feature_catalog.category') }}</th>
+          <th>{{ t('admin_feature_catalog.active') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for feature in features %}
+        <tr>
+          <td>{{ feature.code }}</td>
+          <td>{{ feature.name_jp }}</td>
+          <td>{{ feature.name_cn }}</td>
+          <td>{{ feature.value_type }}</td>
+          <td class="text-muted small">{{ feature.enum_options_json or '-' }}</td>
+          <td>{{ feature.category_code or '-' }}</td>
+          <td>{{ t('admin_feature_catalog.active_yes') if feature.is_active else t('admin_feature_catalog.active_no') }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-muted">{{ t('admin_feature_catalog.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

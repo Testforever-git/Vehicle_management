@@ -40,16 +40,14 @@ vehicle | CREATE TABLE `vehicle` (
   `displacement_cc` int unsigned DEFAULT NULL,
   `fuel_type_code` varchar(32) DEFAULT NULL,
   `drive_type_code` varchar(32) DEFAULT NULL,
+  `body_type_code` varchar(64) DEFAULT NULL,
   `transmission` varchar(32) DEFAULT NULL,
+  `seat_count` int DEFAULT NULL,
+  `door_count` int DEFAULT NULL,
   `ownership_type` varchar(32) DEFAULT NULL,
   `owner_id` bigint unsigned DEFAULT NULL,
   `driver_id` bigint unsigned DEFAULT NULL,
-  `garage_name` varchar(128) DEFAULT NULL,
-  `garage_address_jp` varchar(255) DEFAULT NULL,
-  `garage_address_cn` varchar(255) DEFAULT NULL,
-  `garage_postcode` varchar(16) DEFAULT NULL,
-  `garage_lat` decimal(10,7) DEFAULT NULL,
-  `garage_lng` decimal(10,7) DEFAULT NULL,
+  `garage_store_id` int DEFAULT NULL COMMENT '车辆所在/管理门店(store.id)',
   `purchase_date` date DEFAULT NULL,
   `purchase_price` bigint unsigned DEFAULT NULL,
   `legal_doc` varchar(255) DEFAULT NULL,
@@ -70,7 +68,8 @@ vehicle | CREATE TABLE `vehicle` (
   CONSTRAINT `fk_vehicle_brand` FOREIGN KEY (`brand_id`) REFERENCES `md_brand` (`id`),
   CONSTRAINT `fk_vehicle_color` FOREIGN KEY (`color_id`) REFERENCES `md_color` (`id`),
   CONSTRAINT `fk_vehicle_model` FOREIGN KEY (`model_id`) REFERENCES `md_model` (`id`),
-  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_vehicle_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_vehicle_garage_store` FOREIGN KEY (`garage_store_id`) REFERENCES `store` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
 2.1 Master Data（主数据/字典）规则
@@ -88,7 +87,7 @@ color_code 为稳定代码（如 white/black/silver）
 
 停用颜色：is_active=0
 md_enum（枚举字典）
-enum_type 限定取值：engine_layout / fuel_type / drive_type
+enum_type 限定取值：engine_layout / fuel_type / drive_type / body_type
 enum_code 为稳定代码（如 bev/awd/FF）
 UI 显示使用 name_jp/name_cn
 
@@ -99,9 +98,11 @@ UI 显示使用 name_jp/name_cn
 brand_id：FK -> md_brand.id
 model_id：FK -> md_model.id
 color_id：FK -> md_color.id（可为空）
+garage_store_id：FK -> store.id（可为空）
 engine_layout_code：引用 md_enum(enum_type='engine_layout')
 fuel_type_code：引用 md_enum(enum_type='fuel_type')
 drive_type_code：引用 md_enum(enum_type='drive_type')
+body_type_code：引用 md_enum(enum_type='body_type')
 
 2.3 年份规则
 model_year_ad：公历年份（统计/排序用）
@@ -132,14 +133,61 @@ SELECT
   ft.name_jp AS fuel_type_jp,
   ft.name_cn AS fuel_type_cn,
   dt.name_jp AS drive_type_jp,
-  dt.name_cn AS drive_type_cn
+  dt.name_cn AS drive_type_cn,
+  bt.name_jp AS body_type_jp,
+  bt.name_cn AS body_type_cn
 FROM vehicle v
 JOIN md_brand b ON b.id = v.brand_id
 JOIN md_model m ON m.id = v.model_id
 LEFT JOIN md_color c ON c.id = v.color_id
 LEFT JOIN md_enum el ON el.enum_type='engine_layout' AND el.enum_code=v.engine_layout_code AND el.is_active=1
 LEFT JOIN md_enum ft ON ft.enum_type='fuel_type' AND ft.enum_code=v.fuel_type_code AND ft.is_active=1
-LEFT JOIN md_enum dt ON dt.enum_type='drive_type' AND dt.enum_code=v.drive_type_code AND dt.is_active=1;
+LEFT JOIN md_enum dt ON dt.enum_type='drive_type' AND dt.enum_code=v.drive_type_code AND dt.is_active=1
+LEFT JOIN md_enum bt ON bt.enum_type='body_type' AND bt.enum_code=v.body_type_code AND bt.is_active=1;
+
+2.7 feature_catalog（车辆配置字典）
+CREATE TABLE feature_catalog (
+  code VARCHAR(64) NOT NULL,
+  name_jp VARCHAR(128) NOT NULL,
+  name_cn VARCHAR(128) NOT NULL,
+  value_type ENUM('bool','enum','int','text') NOT NULL DEFAULT 'bool',
+  enum_options_json JSON DEFAULT NULL,
+  category_code VARCHAR(32) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (code),
+  KEY idx_category (category_code),
+  KEY idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+2.8 vehicle_feature_value（车辆配置值）
+CREATE TABLE vehicle_feature_value (
+  vehicle_id INT NOT NULL,
+  feature_code VARCHAR(64) NOT NULL,
+
+  value_bool TINYINT(1) DEFAULT NULL,
+  value_enum VARCHAR(64) DEFAULT NULL,
+  value_int INT DEFAULT NULL,
+  value_text VARCHAR(255) DEFAULT NULL,
+
+  source ENUM('manual','import') NOT NULL DEFAULT 'manual',
+  updated_by INT DEFAULT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (vehicle_id, feature_code),
+  KEY idx_feature (feature_code),
+
+  CONSTRAINT fk_vfv_vehicle
+    FOREIGN KEY (vehicle_id) REFERENCES vehicle(id)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_vfv_feature
+    FOREIGN KEY (feature_code) REFERENCES feature_catalog(code)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_vfv_updated_by
+    FOREIGN KEY (updated_by) REFERENCES user(id)
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 应用层直接 SELECT * FROM v_vehicle_i18n，无需到处写 join。
 
@@ -666,6 +714,68 @@ rent_final = max(discounted_rent, 0)
   CONSTRAINT fk_booking_service_service FOREIGN KEY (service_id) REFERENCES rental_service_catalog(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+- 送车/还车费用阶梯
+  CREATE TABLE rental_delivery_fee_tier (
+  id INT NOT NULL AUTO_INCREMENT,
+  min_km DECIMAL(6,2) NOT NULL DEFAULT '0.00',
+  max_km DECIMAL(6,2) DEFAULT NULL,
+  action ENUM('fixed_fee','manual_quote','not_supported') NOT NULL,
+  fee INT DEFAULT NULL COMMENT 'JPY, only for fixed_fee',
+  note VARCHAR(255) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT '1',
+  priority INT NOT NULL DEFAULT '100',
+  PRIMARY KEY (id),
+  KEY idx_delivery_tier (is_active, priority, min_km, max_km)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+- 租车订单
+  CREATE TABLE rental_booking (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  booking_code VARCHAR(32) NOT NULL,
+  customer_id BIGINT UNSIGNED DEFAULT NULL,
+  vehicle_id INT NOT NULL,
+
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+
+  pickup_mode ENUM('store','delivery') NOT NULL DEFAULT 'store',
+  pickup_store_id INT DEFAULT NULL,
+  pickup_address_jp VARCHAR(255) DEFAULT NULL,
+  pickup_postcode VARCHAR(16) DEFAULT NULL,
+  pickup_lat DECIMAL(10,7) DEFAULT NULL,
+  pickup_lng DECIMAL(10,7) DEFAULT NULL,
+
+  dropoff_mode ENUM('store','pickup') NOT NULL DEFAULT 'store',
+  dropoff_store_id INT DEFAULT NULL,
+  dropoff_address_jp VARCHAR(255) DEFAULT NULL,
+  dropoff_postcode VARCHAR(16) DEFAULT NULL,
+  dropoff_lat DECIMAL(10,7) DEFAULT NULL,
+  dropoff_lng DECIMAL(10,7) DEFAULT NULL,
+
+  status ENUM('pending_review','awaiting_docs','awaiting_payment','confirmed','picked_up','returned','closed','cancelled','no_show') NOT NULL DEFAULT 'pending_review',
+  currency CHAR(3) NOT NULL DEFAULT 'JPY',
+  price_snapshot JSON NOT NULL,
+  payment_status ENUM('unpaid','authorized','paid','partially_refunded','refunded','failed') NOT NULL DEFAULT 'unpaid',
+  deposit_status ENUM('none','authorized','captured','released') NOT NULL DEFAULT 'none',
+  note TEXT,
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  updated_by INT DEFAULT NULL,
+  access_token VARCHAR(64) NOT NULL,
+  access_token_expires_at DATETIME DEFAULT NULL,
+
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_rental_booking_code (booking_code),
+  UNIQUE KEY uk_rental_booking_access_token (access_token),
+  KEY idx_booking_vehicle_date (vehicle_id, start_date, end_date),
+  KEY idx_booking_status (status),
+  KEY idx_booking_customer (customer_id),
+  KEY fk_booking_updated_by (updated_by),
+  CONSTRAINT fk_booking_updated_by FOREIGN KEY (updated_by) REFERENCES user(id) ON DELETE SET NULL,
+  CONSTRAINT fk_booking_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 推荐状态流：
 
 客户创建订单 → pending_review
@@ -751,3 +861,19 @@ rent_final = max(discounted_rent, 0)
   UNIQUE KEY `uq_enum` (`enum_type`,`enum_code`),
   KEY `idx_enum_type` (`enum_type`,`is_active`,`sort_order`)
 ) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+
+- store（门店/车库）
+  store | CREATE TABLE `store` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(64) NOT NULL,
+  `address_jp` varchar(255) NOT NULL,
+  `postcode` varchar(16) DEFAULT NULL,
+  `lat` decimal(10,7) DEFAULT NULL,
+  `lng` decimal(10,7) DEFAULT NULL,
+  `phone` varchar(32) DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_store_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci

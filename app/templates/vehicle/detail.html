@@ -4,6 +4,7 @@
 
 {% set brand_label = (vehicle.brand_jp if lang == 'jp' else vehicle.brand_cn) or '-' %}
 {% set model_label = (vehicle.model_jp if lang == 'jp' else vehicle.model_cn) or '-' %}
+{% set body_type_label = (vehicle.body_type_jp if lang == 'jp' else vehicle.body_type_cn) or vehicle.body_type_code or '-' %}
 {% block page_title %}{{ brand_label }} / {{ model_label }}{% endblock %}
 
 {% block content %}
@@ -19,6 +20,9 @@
       {{ display_field('vehicle','brand_id', t('vehicle_detail.brand'), brand_label, 'main') }}
       {{ display_field('vehicle','model_id', t('vehicle_detail.model'), model_label) }}
       {{ display_field('vehicle','type_designation_code', t('vehicle_detail.type_designation_code'), vehicle.type_designation_code) }}
+      {{ display_field('vehicle','body_type_code', t('vehicle_detail.body_type_code'), body_type_label) }}
+      {{ display_field('vehicle','seat_count', t('vehicle_detail.seat_count'), vehicle.seat_count) }}
+      {{ display_field('vehicle','door_count', t('vehicle_detail.door_count'), vehicle.door_count) }}
       {{ display_field('vehicle','plate_no', t('vehicle_detail.plate_no'), vehicle.masked_plate_no) }}
       {{ display_field('vehicle','vin', t('vehicle_detail.vin'), vehicle.vin) }}
       {{ display_field('vehicle','etc_type', t('vehicle_detail.etc_type'), etc_type_labels.get(vehicle.etc_type, vehicle.etc_type)) }}
@@ -56,9 +60,34 @@
     </div>
 
     <div class="card p-3 mt-3">
-      <div class="ac-title-sub">{{ t('vehicle_detail.section_garage') }}</div>
-      {{ display_field('vehicle','garage_name', t('vehicle_detail.garage_name'), vehicle.garage_name) }}
-      {{ display_field('vehicle','garage_address_jp', t('vehicle_detail.garage_address_jp'), vehicle.garage_address_jp) }}
+      <div class="ac-title-sub">{{ t('vehicle_detail.section_store') }}</div>
+      {{ display_field('vehicle','garage_store_id', t('vehicle_detail.store_name'), vehicle.store_name) }}
+    </div>
+
+    <div class="card p-3 mt-3">
+      <div class="ac-title-sub">{{ t('vehicle_detail.section_features') }}</div>
+      {% if feature_groups %}
+        {% for category, features in feature_groups.items() %}
+          <div class="mb-2">
+            <div class="text-muted small">{{ category }}</div>
+            {% for feature in features %}
+              {% set label = feature.name_jp if lang == 'jp' else feature.name_cn %}
+              {% if feature.value_type == 'bool' %}
+                {% set value = t('vehicle_detail.feature_yes') if feature.value_bool in [1, '1', true] else t('vehicle_detail.feature_no') %}
+              {% elif feature.value_type == 'enum' %}
+                {% set value = feature.value_enum or '-' %}
+              {% elif feature.value_type == 'int' %}
+                {% set value = feature.value_int or '-' %}
+              {% else %}
+                {% set value = feature.value_text or '-' %}
+              {% endif %}
+              {{ display_field('vehicle_feature_value', feature.code, label, value) }}
+            {% endfor %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="ac-text-meta">{{ t('vehicle_detail.no_features') }}</p>
+      {% endif %}
     </div>
 
     <div class="card p-3 mt-3">
