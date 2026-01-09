@@ -79,6 +79,14 @@
                 {{ t('nav.admin_vehicle_dictionary') }}
               </a>
             </li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_rental_pricing','admin_rental_requests'] %}active{% endif %}"
+             href="#" id="adminRentalDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {{ t('nav.admin_rental_tab') }}
+          </a>
+          <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.feature_catalog', lang=lang) }}">
                 {{ t('nav.admin_feature_dictionary') }}
@@ -97,6 +105,14 @@
                 {{ t('nav.admin_rental_settings') }}
               </a>
             </li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_rental_pricing','admin_rental_requests'] %}active{% endif %}"
+             href="#" id="adminRentalDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {{ t('nav.admin_rental_tab') }}
+          </a>
+          <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.rental_requests', lang=lang) }}">
                 {{ t('nav.admin_rental_requests_manage') }}
