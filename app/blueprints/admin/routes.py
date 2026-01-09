@@ -11,7 +11,7 @@ from ...repositories.field_permission_repo import (
     update_field_permission,
     delete_field_permission,
 )
-from ...repositories.role_repo import list_roles
+from ...repositories.role_repo import list_roles, update_role
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
 from ...repositories.customer_repo import list_customers, count_customers, soft_delete_customers
 from ...repositories.vehicle_log_repo import log_vehicle_action
@@ -703,6 +703,32 @@ def dictionaries():
         colors=list_colors(),
         enums=list_enums(),
     )
+
+
+@bp.get("/roles")
+def role_list():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    return render_template(
+        "admin/roles.html",
+        active_menu="admin_roles",
+        roles=list_roles(),
+    )
+
+
+@bp.post("/roles")
+def role_actions():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    action = request.form.get("action")
+    if action == "update":
+        role_id = int(request.form.get("role_id", "0") or 0)
+        name_cn = request.form.get("name_cn", "").strip()
+        name_jp = request.form.get("name_jp", "").strip()
+        description = request.form.get("description", "").strip() or None
+        if role_id:
+            update_role(role_id, name_cn, name_jp, description)
+    return redirect(url_for("admin.role_list", lang=request.args.get("lang")))
 
 
 @bp.post("/dictionaries")

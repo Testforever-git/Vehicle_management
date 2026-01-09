@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block page_title %}{{ t('admin_roles.page_title') }}{% endblock %}
+
+{% block content %}
+<div class="card p-3">
+  <h5 class="mb-3">{{ t('admin_roles.list_title') }}</h5>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>{{ t('admin_roles.role_code') }}</th>
+          <th>{{ t('admin_roles.name_jp') }}</th>
+          <th>{{ t('admin_roles.name_cn') }}</th>
+          <th>{{ t('admin_roles.description') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for role in roles %}
+        <tr>
+          <form method="post" action="{{ url_for('admin.role_actions', lang=lang) }}">
+            <input type="hidden" name="action" value="update">
+            <input type="hidden" name="role_id" value="{{ role.id }}">
+            <td>{{ role.id }}</td>
+            <td>{{ role.role_code }}</td>
+            <td><input class="form-control form-control-sm" name="name_jp" value="{{ role.name_jp }}"></td>
+            <td><input class="form-control form-control-sm" name="name_cn" value="{{ role.name_cn }}"></td>
+            <td><input class="form-control form-control-sm" name="description" value="{{ role.description }}"></td>
+            <td>
+              <button class="btn btn-outline-primary btn-sm">
+                {{ t('admin_roles.update') }}
+              </button>
+            </td>
+          </form>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-muted">{{ t('admin_roles.empty') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
