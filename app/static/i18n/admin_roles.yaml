@@ -1,0 +1,18 @@
+jp:
+  page_title: "ロール管理"
+  list_title: "ロール一覧"
+  role_code: "ロールコード"
+  name_jp: "名称（JP）"
+  name_cn: "名称（CN）"
+  description: "説明"
+  update: "更新"
+  empty: "ロールがありません"
+cn:
+  page_title: "角色管理"
+  list_title: "角色列表"
+  role_code: "角色代码"
+  name_jp: "名称（日文）"
+  name_cn: "名称（中文）"
+  description: "说明"
+  update: "更新"
+  empty: "暂无角色"

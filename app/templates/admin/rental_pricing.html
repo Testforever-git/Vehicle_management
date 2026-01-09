@@ -3,6 +3,11 @@
 {% block page_title %}{{ t('admin_rental_pricing.page_title') }}{% endblock %}
 
 {% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.rental_requests', lang=lang) }}">
+    {{ t('admin_rental_pricing.rental_requests_link') }}
+  </a>
+</div>
 <div class="card p-3 mb-4">
   <h5 class="mb-3">{{ t('admin_rental_pricing.vehicle_pricing_title') }}</h5>
   <div class="table-responsive">

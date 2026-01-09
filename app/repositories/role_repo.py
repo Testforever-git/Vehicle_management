@@ -20,3 +20,18 @@ def get_role_by_code(role_code: str):
         """,
         (role_code,),
     )
+
+
+def update_role(role_id: int, name_cn: str, name_jp: str, description: str | None):
+    from ..db.mysql import execute
+
+    return execute(
+        """
+        UPDATE role
+        SET name_cn = %s,
+            name_jp = %s,
+            description = %s
+        WHERE id = %s
+        """,
+        (name_cn, name_jp, description, role_id),
+    )
