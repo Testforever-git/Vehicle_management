@@ -11,7 +11,7 @@ from ...repositories.field_permission_repo import (
     update_field_permission,
     delete_field_permission,
 )
-from ...repositories.role_repo import list_roles
+from ...repositories.role_repo import list_roles, update_role
 from ...repositories.user_repo import create_user, list_users, update_password, update_user, soft_delete_user
 from ...repositories.customer_repo import list_customers, count_customers, soft_delete_customers
 from ...repositories.vehicle_log_repo import log_vehicle_action
@@ -32,6 +32,12 @@ from ...repositories.rental_service_repo import (
     list_rental_services,
     create_rental_service,
     update_rental_service,
+)
+from ...repositories.feature_catalog_repo import (
+    list_feature_catalog,
+    create_feature_catalog,
+    update_feature_catalog,
+    deactivate_feature_catalog,
 )
 from ...repositories.master_data_repo import (
     list_brands,
@@ -699,6 +705,32 @@ def dictionaries():
     )
 
 
+@bp.get("/roles")
+def role_list():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    return render_template(
+        "admin/roles.html",
+        active_menu="admin_roles",
+        roles=list_roles(),
+    )
+
+
+@bp.post("/roles")
+def role_actions():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    action = request.form.get("action")
+    if action == "update":
+        role_id = int(request.form.get("role_id", "0") or 0)
+        name_cn = request.form.get("name_cn", "").strip()
+        name_jp = request.form.get("name_jp", "").strip()
+        description = request.form.get("description", "").strip() or None
+        if role_id:
+            update_role(role_id, name_cn, name_jp, description)
+    return redirect(url_for("admin.role_list", lang=request.args.get("lang")))
+
+
 @bp.post("/dictionaries")
 def dictionary_actions():
     if not _require_admin():
@@ -770,6 +802,41 @@ def dictionary_actions():
                 deactivate_enum(enum_id)
 
     return redirect(url_for("admin.dictionaries", lang=request.args.get("lang")))
+
+
+@bp.get("/feature-catalog")
+def feature_catalog():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+    return render_template(
+        "admin/feature_catalog.html",
+        active_menu="admin_feature_catalog",
+        features=list_feature_catalog(include_inactive=True),
+    )
+
+
+@bp.post("/feature-catalog")
+def feature_catalog_actions():
+    if not _require_admin():
+        return redirect(url_for("ui.dashboard"))
+
+    action = request.form.get("action")
+    code = request.form.get("code", "").strip()
+    name_jp = request.form.get("name_jp", "").strip()
+    name_cn = request.form.get("name_cn", "").strip()
+    value_type = request.form.get("value_type", "bool").strip() or "bool"
+    enum_options_json = request.form.get("enum_options_json", "").strip() or None
+    category_code = request.form.get("category_code", "").strip() or None
+    is_active = request.form.get("is_active") == "1"
+
+    if action == "create" and code:
+        create_feature_catalog(code, name_jp, name_cn, value_type, enum_options_json, category_code, is_active)
+    elif action == "update" and code:
+        update_feature_catalog(code, name_jp, name_cn, value_type, enum_options_json, category_code, is_active)
+    elif action == "delete" and code:
+        deactivate_feature_catalog(code)
+
+    return redirect(url_for("admin.feature_catalog", lang=request.args.get("lang")))
 
 
 @bp.get("/rental/pricing")
