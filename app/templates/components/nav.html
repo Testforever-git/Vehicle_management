@@ -33,7 +33,7 @@
 
         {% if can('admin','view') %}
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','admin_customers','admin_roles','field_permissions'] %}active{% endif %}"
+          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_users','admin_roles','field_permissions'] %}active{% endif %}"
              href="#" id="adminUsersDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             {{ t('nav.admin_users_tab') }}
           </a>
@@ -48,32 +48,25 @@
                 {{ t('nav.admin_roles') }}
               </a>
             </li>
-          </ul>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_menu == 'audit_log' %}active{% endif %}"
-             href="{{ url_for('admin.audit_log', lang=lang) }}">
-            {{ t('nav.admin_audit_tab') }}
-          </a>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_dictionaries','admin_feature_catalog'] %}active{% endif %}"
-             href="#" id="adminMasterDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {{ t('nav.admin_master_tab') }}
-          </a>
-          <ul class="dropdown-menu">
             <li>
-              <a class="dropdown-item" href="{{ url_for('admin.dictionaries', lang=lang) }}">
-                {{ t('nav.admin_dictionaries') }}
+              <a class="dropdown-item" href="{{ url_for('admin.field_permissions', lang=lang) }}">
+                {{ t('nav.field_permissions') }}
               </a>
             </li>
           </ul>
         </li>
-        <li class="nav-item">
-          <a class="nav-link {% if active_menu == 'audit_log' %}active{% endif %}"
-             href="{{ url_for('admin.audit_log', lang=lang) }}">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_menu == 'audit_log' %}active{% endif %}"
+             href="#" id="adminAuditDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             {{ t('nav.admin_audit_tab') }}
           </a>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="{{ url_for('admin.audit_log', lang=lang) }}">
+                {{ t('nav.admin_audit_log') }}
+              </a>
+            </li>
+          </ul>
         </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle {% if active_menu in ['admin_dictionaries','admin_feature_catalog'] %}active{% endif %}"
@@ -83,7 +76,7 @@
           <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.dictionaries', lang=lang) }}">
-                {{ t('nav.admin_dictionaries') }}
+                {{ t('nav.admin_vehicle_dictionary') }}
               </a>
             </li>
           </ul>
@@ -96,7 +89,7 @@
           <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.feature_catalog', lang=lang) }}">
-                {{ t('nav.admin_feature_catalog') }}
+                {{ t('nav.admin_feature_dictionary') }}
               </a>
             </li>
           </ul>
@@ -109,7 +102,20 @@
           <ul class="dropdown-menu">
             <li>
               <a class="dropdown-item" href="{{ url_for('admin.rental_pricing', lang=lang) }}">
-                {{ t('nav.admin_rentals') }}
+                {{ t('nav.admin_rental_settings') }}
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_menu in ['admin_rental_pricing','admin_rental_requests'] %}active{% endif %}"
+             href="#" id="adminRentalDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {{ t('nav.admin_rental_tab') }}
+          </a>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item" href="{{ url_for('admin.rental_requests', lang=lang) }}">
+                {{ t('nav.admin_rental_requests_manage') }}
               </a>
             </li>
           </ul>
