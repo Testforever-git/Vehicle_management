@@ -16,9 +16,24 @@
         'etc1': t('vehicle_detail.etc_type_etc1'),
         'etc2': t('vehicle_detail.etc_type_etc2')
       } %}
+      {% set body_type_labels = {
+        'sedan': t('vehicle_detail.body_type_sedan'),
+        'hatchback': t('vehicle_detail.body_type_hatchback'),
+        'wagon': t('vehicle_detail.body_type_wagon'),
+        'suv': t('vehicle_detail.body_type_suv'),
+        'mpv': t('vehicle_detail.body_type_mpv'),
+        'van': t('vehicle_detail.body_type_van'),
+        'pickup': t('vehicle_detail.body_type_pickup'),
+        'truck': t('vehicle_detail.body_type_truck'),
+        'coupe': t('vehicle_detail.body_type_coupe'),
+        'convertible': t('vehicle_detail.body_type_convertible')
+      } %}
       {{ display_field('vehicle','brand_id', t('vehicle_detail.brand'), brand_label, 'main') }}
       {{ display_field('vehicle','model_id', t('vehicle_detail.model'), model_label) }}
       {{ display_field('vehicle','type_designation_code', t('vehicle_detail.type_designation_code'), vehicle.type_designation_code) }}
+      {{ display_field('vehicle','seat_count', t('vehicle_detail.seat_count'), vehicle.seat_count) }}
+      {{ display_field('vehicle','door_count', t('vehicle_detail.door_count'), vehicle.door_count) }}
+      {{ display_field('vehicle','body_type_code', t('vehicle_detail.body_type_code'), body_type_labels.get(vehicle.body_type_code, vehicle.body_type_code)) }}
       {{ display_field('vehicle','plate_no', t('vehicle_detail.plate_no'), vehicle.masked_plate_no) }}
       {{ display_field('vehicle','vin', t('vehicle_detail.vin'), vehicle.vin) }}
       {{ display_field('vehicle','etc_type', t('vehicle_detail.etc_type'), etc_type_labels.get(vehicle.etc_type, vehicle.etc_type)) }}
@@ -67,6 +82,45 @@
       <p class="ac-text-meta mb-0">
         {{ t('vehicle_detail.files_hint') }}
       </p>
+    </div>
+
+    <div class="card p-3 mt-3">
+      <div class="ac-title-sub">{{ t('vehicle_detail.section_features') }}</div>
+      {% if feature_items %}
+        <div class="row g-2">
+          {% set has_values = namespace(found=false) %}
+          {% for feature in feature_items %}
+            {% if feature.value_bool is not none or feature.value_enum or feature.value_int is not none or feature.value_text %}
+              {% set has_values.found = true %}
+              {% if feature.value_type == 'bool' %}
+                {% set value_label = t('vehicle_edit.feature_bool_yes') if feature.value_bool in [1, '1', true] else t('vehicle_edit.feature_bool_no') %}
+              {% elif feature.value_type == 'enum' %}
+                {% set value_label = feature.value_enum %}
+                {% for option in feature.enum_options %}
+                  {% if option.value|string == feature.value_enum|string %}
+                    {% set value_label = option.label_jp if lang == 'jp' else option.label_cn %}
+                  {% endif %}
+                {% endfor %}
+              {% elif feature.value_type == 'int' %}
+                {% set value_label = feature.value_int %}
+              {% else %}
+                {% set value_label = feature.value_text %}
+              {% endif %}
+              <div class="col-md-6">
+                <div class="ac-field ac-field-body">
+                  <div class="ac-field-label">{{ feature.name_jp if lang == 'jp' else feature.name_cn }}</div>
+                  <div class="ac-field-value ac-text-body">{{ value_label if value_label is not none and value_label != '' else '-' }}</div>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% if not has_values.found %}
+          <p class="ac-text-meta mt-2">{{ t('vehicle_detail.feature_empty') }}</p>
+        {% endif %}
+      {% else %}
+        <p class="ac-text-meta">{{ t('vehicle_detail.feature_empty') }}</p>
+      {% endif %}
     </div>
   </div>
 </div>

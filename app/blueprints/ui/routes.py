@@ -1,4 +1,5 @@
 # app/blueprints/ui/routes.py
+import json
 import os
 import shutil
 from datetime import date, datetime
@@ -27,6 +28,12 @@ from ...repositories.master_data_repo import (
     list_models,
     list_colors,
     list_enums,
+)
+from ...repositories.feature_catalog_repo import list_feature_catalog
+from ...repositories.vehicle_feature_repo import (
+    list_vehicle_feature_values,
+    upsert_vehicle_feature_value,
+    delete_vehicle_feature_value,
 )
 from ...repositories.store_repo import list_stores
 from ...repositories.vehicle_media_repo import (
@@ -122,6 +129,9 @@ VEHICLE_FIELDS = [
     {"name": "classification_number", "label_key": "vehicle_edit.fields.classification_number", "type": "text"},
     {"name": "engine_code", "label_key": "vehicle_edit.fields.engine_code", "type": "text"},
     {"name": "engine_layout_code", "label_key": "vehicle_edit.fields.engine_layout_code", "type": "select", "options_key": "engine_layout"},
+    {"name": "seat_count", "label_key": "vehicle_edit.fields.seat_count", "type": "number"},
+    {"name": "door_count", "label_key": "vehicle_edit.fields.door_count", "type": "number"},
+    {"name": "body_type_code", "label_key": "vehicle_edit.fields.body_type_code", "type": "select", "options_key": "body_type"},
     {"name": "displacement_cc", "label_key": "vehicle_edit.fields.displacement_cc", "type": "number"},
     {"name": "fuel_type_code", "label_key": "vehicle_edit.fields.fuel_type_code", "type": "select", "options_key": "fuel_type"},
     {"name": "drive_type_code", "label_key": "vehicle_edit.fields.drive_type_code", "type": "select", "options_key": "drive_type"},
@@ -144,11 +154,14 @@ NULLABLE_NUMERIC_FIELDS = {
     "color_id",
     "model_year_ad",
     "displacement_cc",
+    "seat_count",
+    "door_count",
     "purchase_price",
 }
 
 NULLABLE_TEXT_FIELDS = {
     "note",
+    "body_type_code",
 }
 
 PHOTO_FILE_TYPE = "photo"
@@ -157,6 +170,70 @@ LEGACY_PHOTO_DIR_CATEGORY = "Vehicle_photo"
 
 _translator = Translator()
 _YEAR_CONVERSION_CACHE = None
+
+
+def _parse_enum_options(raw_options: str | None) -> list[dict]:
+    if not raw_options:
+        return []
+    try:
+        data = json.loads(raw_options)
+    except (TypeError, ValueError):
+        return []
+    options = []
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                value = item.get("value") or item.get("code") or item.get("enum")
+                label_jp = item.get("label_jp") or item.get("name_jp") or item.get("label")
+                label_cn = item.get("label_cn") or item.get("name_cn") or item.get("label")
+            else:
+                value = item
+                label_jp = str(item)
+                label_cn = str(item)
+            if value is None:
+                continue
+            options.append(
+                {
+                    "value": value,
+                    "label_jp": label_jp or str(value),
+                    "label_cn": label_cn or str(value),
+                }
+            )
+    return options
+
+
+def _feature_has_value(row: dict | None) -> bool:
+    if not row:
+        return False
+    return any(
+        row.get(key) not in (None, "")
+        for key in ("value_bool", "value_enum", "value_int", "value_text")
+    )
+
+
+def _build_feature_view_models(features: list[dict], values_map: dict) -> list[dict]:
+    view_models = []
+    for feature in features:
+        code = feature["code"]
+        value_row = values_map.get(code)
+        if not feature.get("is_active") and not _feature_has_value(value_row):
+            continue
+        view_models.append(
+            {
+                "code": code,
+                "name_jp": feature.get("name_jp"),
+                "name_cn": feature.get("name_cn"),
+                "value_type": feature.get("value_type"),
+                "category_code": feature.get("category_code") or "",
+                "is_active": bool(feature.get("is_active", 1)),
+                "enum_options": _parse_enum_options(feature.get("enum_options_json")),
+                "value_bool": value_row.get("value_bool") if value_row else None,
+                "value_enum": value_row.get("value_enum") if value_row else None,
+                "value_int": value_row.get("value_int") if value_row else None,
+                "value_text": value_row.get("value_text") if value_row else None,
+            }
+        )
+    return view_models
 
 
 def _image_base_dir():
@@ -298,6 +375,48 @@ def _status_payload_from_form():
     return payload
 
 
+def _feature_payload_from_form(features: list[dict]) -> list[dict]:
+    payloads = []
+    for feature in features:
+        code = feature["code"]
+        form_key = f"feature_{code}"
+        if form_key not in request.form:
+            continue
+        value = request.form.get(form_key)
+        if isinstance(value, str):
+            value = value.strip()
+        value_bool = None
+        value_enum = None
+        value_int = None
+        value_text = None
+        value_type = feature.get("value_type")
+        if value_type == "bool":
+            if value in {"0", "1"}:
+                value_bool = int(value)
+        elif value_type == "enum":
+            if value:
+                value_enum = value
+        elif value_type == "int":
+            if value != "":
+                try:
+                    value_int = int(value)
+                except (TypeError, ValueError):
+                    value_int = None
+        else:
+            if value:
+                value_text = value
+        payloads.append(
+            {
+                "feature_code": code,
+                "value_bool": value_bool,
+                "value_enum": value_enum,
+                "value_int": value_int,
+                "value_text": value_text,
+            }
+        )
+    return payloads
+
+
 def _build_year_options():
     conversion = _load_year_conversion()
     years = list(conversion.get("ad_to_era", {}).keys())
@@ -374,6 +493,18 @@ def _load_master_data():
         "engine_layout": enum_groups.get("engine_layout", []),
         "fuel_type": enum_groups.get("fuel_type", []),
         "drive_type": enum_groups.get("drive_type", []),
+        "body_type": [
+            {"value": "sedan", "label": "セダン / 轿车", "is_active": True},
+            {"value": "hatchback", "label": "ハッチバック / 两厢车", "is_active": True},
+            {"value": "wagon", "label": "ワゴン / 旅行车", "is_active": True},
+            {"value": "suv", "label": "SUV / SUV", "is_active": True},
+            {"value": "mpv", "label": "MPV / MPV", "is_active": True},
+            {"value": "van", "label": "バン / 面包车", "is_active": True},
+            {"value": "pickup", "label": "ピックアップ / 皮卡", "is_active": True},
+            {"value": "truck", "label": "トラック / 卡车", "is_active": True},
+            {"value": "coupe", "label": "クーペ / 跑车", "is_active": True},
+            {"value": "convertible", "label": "コンバーチブル / 敞篷车", "is_active": True},
+        ],
         "status_options": [
             {"value": "available", "label": "available", "is_active": True},
             {"value": "rented", "label": "rented", "is_active": True},
@@ -660,6 +791,10 @@ def vehicle_detail(vehicle_id: int):
     legal_docs = _media_filenames(list_vehicle_media(vehicle_id, "legal_doc"))
     vehicle_photos = _media_filenames(list_vehicle_media(vehicle_id, PHOTO_FILE_TYPE))
     qr_row = get_vehicle_qr_by_vehicle_id(vehicle_id)
+    feature_catalog = list_feature_catalog(include_inactive=True)
+    feature_values = list_vehicle_feature_values(vehicle_id)
+    feature_map = {row["feature_code"]: row for row in feature_values}
+    feature_items = _build_feature_view_models(feature_catalog, feature_map)
 
     return render_template(
         "vehicle/detail.html",
@@ -670,6 +805,7 @@ def vehicle_detail(vehicle_id: int):
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
         qr_slug=qr_row["qr_slug"] if qr_row else None,
+        feature_items=feature_items,
     )
 
 @bp.route("/vehicle/<int:vehicle_id>/edit", methods=["GET","POST"])
@@ -686,6 +822,8 @@ def vehicle_edit(vehicle_id: int):
         old_status = get_status(vehicle_id) or {}
         payload = _payload_from_form()
         status_payload = _status_payload_from_form()
+        feature_catalog = list_feature_catalog(include_inactive=True)
+        feature_payloads = _feature_payload_from_form(feature_catalog)
         vin = (payload.get("vin") or vehicle.get("vin") or "").strip()
         if not vin:
             flash(_t("vehicle_edit.messages.vin_required"), "warning")
@@ -780,6 +918,22 @@ def vehicle_edit(vehicle_id: int):
                 "update",
                 "修改 vehicle_status 字段",
             )
+        for feature_payload in feature_payloads:
+            if all(
+                feature_payload.get(key) is None
+                for key in ("value_bool", "value_enum", "value_int", "value_text")
+            ):
+                delete_vehicle_feature_value(vehicle_id, feature_payload["feature_code"])
+            else:
+                upsert_vehicle_feature_value(
+                    vehicle_id,
+                    feature_payload["feature_code"],
+                    feature_payload.get("value_bool"),
+                    feature_payload.get("value_enum"),
+                    feature_payload.get("value_int"),
+                    feature_payload.get("value_text"),
+                    get_current_user().user_id,
+                )
         log_vehicle_action(
             vehicle_id,
             actor=get_current_user().username,
@@ -801,6 +955,10 @@ def vehicle_edit(vehicle_id: int):
     has_primary_photo = any(item["is_primary"] for item in vehicle_photos)
     status = get_status(vehicle_id) or {}
     master_data = _load_master_data()
+    feature_catalog = list_feature_catalog(include_inactive=True)
+    feature_values = list_vehicle_feature_values(vehicle_id)
+    feature_map = {row["feature_code"]: row for row in feature_values}
+    feature_items = _build_feature_view_models(feature_catalog, feature_map)
 
     return render_template(
         "vehicle/edit.html",
@@ -810,6 +968,7 @@ def vehicle_edit(vehicle_id: int):
         status_fields=STATUS_FIELDS,
         status_data=status,
         master_data=master_data,
+        feature_items=feature_items,
         year_conversion=_load_year_conversion(),
         legal_docs=legal_docs,
         vehicle_photos=vehicle_photos,
@@ -837,6 +996,8 @@ def vehicle_new():
     if request.method == "POST":
         payload = _payload_from_form()
         status_payload = _status_payload_from_form()
+        feature_catalog = list_feature_catalog(include_inactive=True)
+        feature_payloads = _feature_payload_from_form(feature_catalog)
         vin = (payload.get("vin") or "").strip()
         if not vin:
             flash(_t("vehicle_edit.messages.vin_required"), "warning")
@@ -854,6 +1015,21 @@ def vehicle_new():
         created = get_vehicle_by_vin(vin)
         if created:
             ensure_vehicle_qr(created["id"])
+            for feature_payload in feature_payloads:
+                if all(
+                    feature_payload.get(key) is None
+                    for key in ("value_bool", "value_enum", "value_int", "value_text")
+                ):
+                    continue
+                upsert_vehicle_feature_value(
+                    created["id"],
+                    feature_payload["feature_code"],
+                    feature_payload.get("value_bool"),
+                    feature_payload.get("value_enum"),
+                    feature_payload.get("value_int"),
+                    feature_payload.get("value_text"),
+                    get_current_user().user_id,
+                )
             if payload.get("etc_type") == "none":
                 status_payload["has_etc_card"] = "0"
             if status_payload:
@@ -899,6 +1075,13 @@ def vehicle_new():
             return redirect(url_for("ui.vehicle_detail", vehicle_id=created["id"], lang=request.args.get("lang")))
         return redirect(url_for("ui.vehicle_list", lang=request.args.get("lang")))
 
+    feature_catalog = list_feature_catalog(include_inactive=True)
+    feature_values = []
+    if source_id:
+        feature_values = list_vehicle_feature_values(int(source_id))
+    feature_map = {row["feature_code"]: row for row in feature_values}
+    feature_items = _build_feature_view_models(feature_catalog, feature_map)
+
     return render_template(
         "vehicle/edit.html",
         active_menu="vehicle",
@@ -907,6 +1090,7 @@ def vehicle_new():
         status_fields=STATUS_FIELDS,
         status_data={},
         master_data=_load_master_data(),
+        feature_items=feature_items,
         year_conversion=_load_year_conversion(),
         legal_docs=[],
         vehicle_photos=[],

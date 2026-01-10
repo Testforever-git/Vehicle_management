@@ -14,6 +14,8 @@ jp:
   update: "更新"
   delete: "削除"
   password_reset: "パスワード再設定"
+  links_customers: "顧客管理へ"
+  links_field_permissions: "フィールド権限へ"
   empty: "ユーザーがありません"
 cn:
   page_title: "用户管理"
@@ -31,4 +33,6 @@ cn:
   update: "更新"
   delete: "删除"
   password_reset: "重置密码"
+  links_customers: "前往客户管理"
+  links_field_permissions: "前往字段权限"
   empty: "暂无用户"
